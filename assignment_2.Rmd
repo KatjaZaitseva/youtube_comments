@@ -1,0 +1,86 @@
+---
+title: ""
+output:
+  bookdown::pdf_document2:
+    fig_crop: no
+    fig_caption: yes
+    toc: no
+    number_sections: TRUE
+  word_document: default
+keep_tex: yes
+header-includes:
+- \usepackage[UKenglish]{isodate}
+- \cleanlookdateon
+- \usepackage{natbib}
+- \bibliographystyle{agsm}
+- \usepackage{float}
+- \usepackage[hang,flushmargin, bottom]{footmisc}
+- \usepackage{sectsty}
+- \usepackage{setspace}
+- \usepackage{geometry}
+---
+
+\newgeometry{top=1.8in,bottom=1.8in,right=1in,left=1in}
+\spacing{1.7}
+
+\allsectionsfont{\centering}
+\subsectionfont{\raggedright}
+\subsubsectionfont{\raggedright}
+
+\pagenumbering{gobble}
+
+\begin{centering}
+  \newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
+	\textsc{\LARGE KU LEUVEN}\\[1.5cm]
+	\textsc{\Large Collecting and Analyzing Big Data \\ for Social Sciences}\\[0.5cm]
+	\textsc{\large B-KUL-S0K17A}\\[0.5cm]
+	\HRule\\[0.6cm]
+	{\huge\bfseries Assignment 2:} \\ [0.2cm]
+	{\LARGE\bfseries Research Notebook}\\[0.2cm]
+	\HRule\\[1.5cm]
+	{\Large\textit{Group 24:}}\\
+	\large Ekaterina \textsc{Zaitseva} - r0870363\\
+	\large Emma \textsc{Schweidler} - r0883088 \\
+	\large Jade \textsc{Willaert} - \\
+	\vfill\vfill\vfill
+	{\large\today}
+	
+\end{centering}
+
+\allsectionsfont{\raggedright}
+
+\singlespacing
+
+ 
+\newpage
+
+\newgeometry{top=1in,bottom=1in,right=1in,left=1in}
+\pagenumbering{arabic} 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<!-- Make sure following aspects are included: short problem statement & research question (without extensive literature review), methodological design, description of data (collection), data cleaning/wrangling steps, analysis, robustness checks (if applicable), results, limitations, conclusion, pitch -->
+
+# Research Question
+
+# Methodological Design
+
+# Data
+
+## Data Collection
+
+## Data Wrangling
+
+## Data Analysis
+
+## Robustness Checks
+
+# Results and Discussion
+
+# Limitations
+
+# Conclusion
+
+# Elevator Pitch
