@@ -18,6 +18,8 @@ header-includes:
 - \usepackage{sectsty}
 - \usepackage{setspace}
 - \usepackage{geometry}
+
+bibliography: references.bib
 ---
 
 \newgeometry{top=1.8in,bottom=1.8in,right=1in,left=1in}
@@ -31,7 +33,7 @@ header-includes:
 
 \begin{centering}
   \newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
-	\textsc{\LARGE KU LEUVEN}\\[1.5cm]
+	\includegraphics[width=0.4\textwidth]{kuleuven_logo.png}\\[1cm]
 	\textsc{\Large Collecting and Analyzing Big Data \\ for Social Sciences}\\[0.5cm]
 	\textsc{\large B-KUL-S0K17A}\\[0.5cm]
 	\HRule\\[0.6cm]
@@ -84,3 +86,8 @@ knitr::opts_chunk$set(echo = TRUE)
 # Conclusion
 
 # Elevator Pitch
+
+
+\newpage
+\bibliography{references}
+
