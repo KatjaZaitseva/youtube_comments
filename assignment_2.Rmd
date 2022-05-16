@@ -21,7 +21,10 @@ header-includes:
 - \usepackage{setspace}
 - \usepackage{geometry}
 <<<<<<< HEAD
+<<<<<<< HEAD
 - \usepackage{graphicx}
+=======
+>>>>>>> a147c139dae97e422257e52045e88315030ba2e6
 =======
 >>>>>>> a147c139dae97e422257e52045e88315030ba2e6
 
@@ -152,11 +155,17 @@ not all comments were scraped
 # Elevator Pitch
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 \newpage
 \bibliography{references}
 =======
+=======
+>>>>>>> a147c139dae97e422257e52045e88315030ba2e6
 
 \newpage
 \bibliography{references}
 
+<<<<<<< HEAD
+>>>>>>> a147c139dae97e422257e52045e88315030ba2e6
+=======
 >>>>>>> a147c139dae97e422257e52045e88315030ba2e6
