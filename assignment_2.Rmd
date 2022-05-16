@@ -6,6 +6,7 @@ output:
     fig_caption: yes
     toc: no
     number_sections: TRUE
+    latex_engine: xelatex
   word_document: default
 keep_tex: yes
 header-includes:
@@ -13,11 +14,18 @@ header-includes:
 - \cleanlookdateon
 - \usepackage{natbib}
 - \bibliographystyle{agsm}
+- \usepackage{hyperref}
 - \usepackage{float}
 - \usepackage[hang,flushmargin, bottom]{footmisc}
 - \usepackage{sectsty}
 - \usepackage{setspace}
 - \usepackage{geometry}
+<<<<<<< HEAD
+- \usepackage{graphicx}
+=======
+>>>>>>> a147c139dae97e422257e52045e88315030ba2e6
+
+bibliography: references.bib
 ---
 
 \newgeometry{top=1.8in,bottom=1.8in,right=1in,left=1in}
@@ -31,11 +39,11 @@ header-includes:
 
 \begin{centering}
   \newcommand{\HRule}{\rule{\linewidth}{0.5mm}}
-	\textsc{\LARGE KU LEUVEN}\\[1.5cm]
+	\includegraphics[width=0.4\textwidth]{kuleuven_logo.png}\\[1cm]
 	\textsc{\Large Collecting and Analyzing Big Data \\ for Social Sciences}\\[0.5cm]
 	\textsc{\large B-KUL-S0K17A}\\[0.5cm]
 	\HRule\\[0.6cm]
-	{\huge\bfseries Assignment 2:} \\ [0.2cm]
+	{\huge\bfseries Assignment 2:} \\ [0.25cm]
 	{\LARGE\bfseries Research Notebook}\\[0.2cm]
 	\HRule\\[1.5cm]
 	{\Large\textit{Group 24:}}\\
@@ -59,11 +67,17 @@ header-includes:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
+library(knitr)
+library(formatR)
+opts_chunk$set(tidy.opts=list(width.cutoff=90),tidy=TRUE)
 ```
 
 <!-- Make sure following aspects are included: short problem statement & research question (without extensive literature review), methodological design, description of data (collection), data cleaning/wrangling steps, analysis, robustness checks (if applicable), results, limitations, conclusion, pitch -->
 
 # Research Question
+
+In March of this year, the Youtube channel \citet{JaidenAnimationsVideo} uploaded a video titled ‘Being Not Straight’. The animated story, which has since received almost 12 million views, is a coming out video that introduces the audience to aromanticism and asexuality. As both of these orientations are still relatively unknown, our project seeks to analyse the comment section under the video so as to investigate how the video was received. More precisely, we are interested in the audience's sentiment and the main topics discussed in the comments.
 
 # Methodological Design
 
@@ -71,7 +85,57 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Data Collection
 
+`vosonSML` package vs `tuber` package
+
+reported issues with `tuber` package: \citep{IssuesTuber}
+
+issues with nested comments in general: \citep{IssuesNestedComments} 
+
+```{r packages, message=F}
+library(tidyverse)
+library(tuber)
+```
+
+comments under the video at the time of data collection: 231,866
+
+number of comments scraped with `tuber`: 180,743
+
+number of comments scraped with `vosonSML`: 151,884
+
+number of comments scraped with php tool \citep{RiederTools} (outwith R; only for benchmarking purposes): 218,848
+
+noteworthy that none of the tested packages and tools were able to extract all Youtube comments
+
+project in R, so we opted for the `tuber` package
+
+
+code used to scrape comments (data were collected on 16th May 2022):
+
+```{r tuber, eval=F }
+# authenticate Youtube API (for security reasons, our personal APP_ID and APP_SECRET are not included in this script)
+yt_oauth("APP_ID", "APP_SECRET", token = '')
+
+# scrape comments
+comments <- get_all_comments(video_id = "qF1DTK4U1AM")
+
+# write output to file
+write_csv(comments, "being_not_straight_16_may_22_tuber.csv")  
+```
+
+
+data import:
+
+```{r data import}
+# import data
+comments <- read.csv("being_not_straight_16_may_22_tuber.csv", header = T)
+```
+
+
 ## Data Wrangling
+
+what metadata is available? what metadata is needed? drop columns if irrelevant
+
+ignore replies and only focus on parent comment?
 
 ## Data Analysis
 
@@ -81,6 +145,18 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # Limitations
 
+not all comments were scraped
+
 # Conclusion
 
 # Elevator Pitch
+
+<<<<<<< HEAD
+\newpage
+\bibliography{references}
+=======
+
+\newpage
+\bibliography{references}
+
+>>>>>>> a147c139dae97e422257e52045e88315030ba2e6
