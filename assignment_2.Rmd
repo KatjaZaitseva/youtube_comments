@@ -141,6 +141,7 @@ comments <- read.csv("being_not_straight_16_may_22_tuber.csv", header = T)
 
 ```{r}
 print(names(comments))
+comments %>% count(moderationStatus)
 ```
 
 ```{r}
@@ -152,15 +153,54 @@ Initially, we have 15 variables which are described in the official documentatio
 \textit{likeCount} - the total number of likes (positive ratings) the comment has received;
 \textit{parentId} - The unique ID of the parent comment. This property is only set if the comment was submitted as a reply to another comment;
 \textit{id} - unique identifier of the comment;
-\textit{moderationStatus} - the comment's moderation status, valid values are: heldForReview, likelySpam, published, rejected;
+ - the comment's moderation status, valid values are: heldForReview, likelySpam, published, rejected;
 
-Between the \textit{textDisplay} and \textit{textOriginal} variables, \textit{textOriginal} was chosen because \textit{textDisplay} is the comment's text which was retrieved in html format, so e.g. in  \textit{textDisplay} video links may replaced with video titles and we can count them as words the user wrote in the video. Other variables, such as the publication date or date of update, we will remove from the dataframe, as our main focus is on what people posted and how it was responded to. Moreover, we are aware that since we are working with social media comments, we have to take ethics into account - that's why we removed all the usernames and users' characteristics, thereby anonymizing the comments.
+Between the \textit{textDisplay} and \textit{textOriginal} variables, \textit{textOriginal} was chosen because \textit{textDisplay} is the comment's text which was retrieved in html format. Thus, e.g. in  \textit{textDisplay} video links may replaced with video titles and we can count them as words the user wrote in the video or the emoji can be converted to text. Other variables, such as the publication date or the date of comment update, we will remove from the dataframe, as our main focus is on what people posted and how it was responded to. Moreover, we are aware that since we are working with social media comments, we have to take ethics into account - that's why we removed all the usernames and users' characteristics, thereby anonymizing the comments. Since the field \textit{moderationStatus} is empty, we will drop this column as well.
 
 ```{r cut dataframe}
-comments.cut <- comments %>% select(c(id, textOriginal, likeCount, moderationStatus, parentId))
-head(comments.cut)
+comments.cut <- comments %>% select(c(id, textOriginal, likeCount, parentId))
+head(comments.cut$textOriginal)
 ```
+
 The next step is to clean up \textit{textOriginal}, as this is the main variable we will be working with
+
+```{r}
+hashtags.n <- sum(str_detect(comments.cut$textOriginal, "#\\w+"))
+urls.n <- sum(str_detect(comments.cut$textOriginal, "(http|ftp|https)://\\S+"))
+mentions.n <- sum(str_detect(comments.cut$textOriginal, "(^|\\s)@\\w+"))
+n <- dim(comments.cut)[1]
+cat("The share of comments with hashtags - ", round(hashtags.n/n,3), 
+    "urls - ", round(urls.n/n,3), "mentions - ", round(mentions.n/n,3))
+```
+
+Comparing to html format, there is not much to clean up in the original text, mainly just the quotation marks and line break. However, we have mentions and hashtags which need to be removed
+
+```{r}
+textCleaned <- comments.cut$textOriginal %>% 
+  str_replace_all("\"", "") %>% 
+  #remove line break
+  str_replace_all("\n", " ") %>% 
+  #remove at-mentions, tags and urls
+  str_replace_all("(^|\\s)(@|#|https|http|ftp?://)\\S+", " ") %>% 
+  #remove numbers
+  str_replace_all("[0-9]+", " ") %>% 
+  #remove all non-word characters
+  str_replace_all("\\W+", " ") %>% 
+  #lower case
+  tolower() %>% 
+  #trim spaces at start and end
+  trimws() %>% 
+  #make tidy text dataset
+  tibble()
+
+head(textCleaned) 
+```
+```{r}
+cleaned <- comments.cut %>%
+  mutate(textCleaned=textCleaned,
+        .after=textOriginal)
+```
+
 
 ignore replies and only focus on parent comment?
 
@@ -175,6 +215,8 @@ e.g., bag of words, n-grams
 dictionary-based sentiment analysis to quantify how most people felt about the video (i.e., positively or negatively)
 
 ### Sentiment analysis with weights
+
+### Topic modeling
 
 ## Robustness Checks
 
