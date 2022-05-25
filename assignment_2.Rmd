@@ -82,45 +82,52 @@ In March of this year, the Youtube channel \citet{JaidenAnimationsVideo} uploade
 
 ## Data Collection
 
-`vosonSML` package vs `tuber` package
-
-reported issues with `tuber` package: \citep{IssuesTuber}
-
-issues with nested comments in general: \citep{IssuesNestedComments} 
+First, we need to scrap the comments via the Youtube API. There are two packages to pursue this: `vosonSML` package vs `tuber` package. However, there are reported issues with `tuber` package: \citep{IssuesTuber} and issues with nested comments in general: \citep{IssuesNestedComments} 
 
 ```{r packages, message=F}
 library(tidyverse)
 library(tuber)
 ```
 
-comments under the video at the time of data collection: 231,866
+We tested both packages and we got the following results:
+\begin{itemize}
+  \item comments under the video at the time of data collection: 231,866
+  \item number of comments scraped with `tuber`: 180,743
+  \item number of comments scraped with `vosonSML`: 151,884
+  \item number of comments scraped with php tool \citep{RiederTools} (outwith R; only for benchmarking purposes): 218,848
+\end{itemize}
+  
+Noteworthy that none of the tested packages and tools were able to extract all Youtube comments. Since our project is in R, we opted for the `tuber` package.
 
-number of comments scraped with `tuber`: 180,743
-
-number of comments scraped with `vosonSML`: 151,884
-
-number of comments scraped with php tool \citep{RiederTools} (outwith R; only for benchmarking purposes): 218,848
-
-noteworthy that none of the tested packages and tools were able to extract all Youtube comments
-
-project in R, so we opted for the `tuber` package
-
-
-code used to scrape comments (data were collected on 16th May 2022):
+Code used to scrape comments (data were collected on 16th May 2022):
 
 ```{r tuber, eval=F }
 # authenticate Youtube API (for security reasons, our personal APP_ID and APP_SECRET are not included in this script)
 yt_oauth("APP_ID", "APP_SECRET", token = '')
 
+#get statistics about the video
+get_stats(video_id="qF1DTK4U1AM")
+
 # scrape comments
 comments <- get_all_comments(video_id = "qF1DTK4U1AM")
+
+#check that nested comments are presented in the dataset
+subcomments <- comments %>% filter(!is.na(parentId))
+dim(subcomments)
 
 # write output to file
 write_csv(comments, "being_not_straight_16_may_22_tuber.csv")  
 ```
 
+Data import:
 
-data import:
+Set the working directory with a file
+
+```{r locate the folder}
+getwd()
+setwd("/Users/katerinazaitseva/Downloads/Education/Big Data for Social Science/Exam/youtube_comments-main")
+```
+
 
 ```{r data import}
 # import data
@@ -130,11 +137,44 @@ comments <- read.csv("being_not_straight_16_may_22_tuber.csv", header = T)
 
 ## Data Wrangling
 
-what metadata is available? what metadata is needed? drop columns if irrelevant
+\textbf{Dataframe exploration}
+
+```{r}
+print(names(comments))
+```
+
+```{r}
+head(comments)
+```
+
+Initially, we have 15 variables which are described in the official documentation by the link - https://developers.google.com/youtube/v3/docs/comments. We will focus on the following properties of the video:
+\textit{textOriginal} - raw text of the comment as it was initially posted or last updated; 
+\textit{likeCount} - the total number of likes (positive ratings) the comment has received;
+\textit{parentId} - The unique ID of the parent comment. This property is only set if the comment was submitted as a reply to another comment;
+\textit{id} - unique identifier of the comment;
+\textit{moderationStatus} - the comment's moderation status, valid values are: heldForReview, likelySpam, published, rejected;
+
+Between the \textit{textDisplay} and \textit{textOriginal} variables, \textit{textOriginal} was chosen because \textit{textDisplay} is the comment's text which was retrieved in html format, so e.g. in  \textit{textDisplay} video links may replaced with video titles and we can count them as words the user wrote in the video. Other variables, such as the publication date or date of update, we will remove from the dataframe, as our main focus is on what people posted and how it was responded to. Moreover, we are aware that since we are working with social media comments, we have to take ethics into account - that's why we removed all the usernames and users' characteristics, thereby anonymizing the comments.
+
+```{r cut dataframe}
+comments.cut <- comments %>% select(c(id, textOriginal, likeCount, moderationStatus, parentId))
+head(comments.cut)
+```
+The next step is to clean up \textit{textOriginal}, as this is the main variable we will be working with
 
 ignore replies and only focus on parent comment?
 
+### Exploratory analysis
+
+e.g., bag of words, n-grams
+
 ## Data Analysis
+
+### Sentiment analysis
+
+dictionary-based sentiment analysis to quantify how most people felt about the video (i.e., positively or negatively)
+
+### Sentiment analysis with weights
 
 ## Robustness Checks
 
