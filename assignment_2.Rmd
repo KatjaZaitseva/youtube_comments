@@ -87,6 +87,14 @@ First, we need to scrap the comments via the Youtube API. There are two packages
 ```{r packages, message=F}
 library(tidyverse)
 library(tuber)
+#tokenization
+library(quanteda) 
+library(quanteda.textstats)
+library(quanteda.textplots)
+#corpus
+library(tm)
+#stopwords
+library(stopwords)
 ```
 
 We tested both packages and we got the following results:
@@ -144,9 +152,14 @@ print(names(comments))
 comments %>% count(moderationStatus)
 ```
 
+Before starting the analysis, we should remove comments by the video creators themselves (\cite{YoutubeGenderSentiment})
+
 ```{r}
-head(comments)
+comments <- comments %>%
+  filter(!authorChannelId.value=='UCGwu0nbY2wSkW8N-cghnLpA')
+dim(comments)
 ```
+
 
 Initially, we have 15 variables which are described in the official documentation by the link - https://developers.google.com/youtube/v3/docs/comments. We will focus on the following properties of the video:
 \textit{textOriginal} - raw text of the comment as it was initially posted or last updated; 
@@ -158,16 +171,20 @@ Initially, we have 15 variables which are described in the official documentatio
 Between the \textit{textDisplay} and \textit{textOriginal} variables, \textit{textOriginal} was chosen because \textit{textDisplay} is the comment's text which was retrieved in html format. Thus, e.g. in  \textit{textDisplay} video links may replaced with video titles and we can count them as words the user wrote in the video or the emoji can be converted to text. Other variables, such as the publication date or the date of comment update, we will remove from the dataframe, as our main focus is on what people posted and how it was responded to. Moreover, we are aware that since we are working with social media comments, we have to take ethics into account - that's why we removed all the usernames and users' characteristics, thereby anonymizing the comments. Since the field \textit{moderationStatus} is empty, we will drop this column as well.
 
 ```{r cut dataframe}
-comments.cut <- comments %>% select(c(id, textOriginal, likeCount, parentId))
-head(comments.cut$textOriginal)
+#make boolen variable instead of parentId
+comments <- comments %>% 
+  mutate(ThreadComment = if_else(is.na(parentId), FALSE, TRUE))
+#select columns
+comments.cut <- comments %>% select(c(id, textOriginal, likeCount, ThreadComment))
+sum(comments.cut$ThreadComment)
 ```
 
 The next step is to clean up \textit{textOriginal}, as this is the main variable we will be working with
 
 ```{r}
 hashtags.n <- sum(str_detect(comments.cut$textOriginal, "#\\w+"))
-urls.n <- sum(str_detect(comments.cut$textOriginal, "(http|ftp|https)://\\S+"))
-mentions.n <- sum(str_detect(comments.cut$textOriginal, "(^|\\s)@\\w+"))
+urls.n <- sum(str_detect(comments.cut$textOriginal, "(http|ftp|https)://\\S+\\s*"))
+mentions.n <- sum(str_detect(comments.cut$textOriginal, "@\\w+"))
 n <- dim(comments.cut)[1]
 cat("The share of comments with hashtags - ", round(hashtags.n/n,3), 
     "urls - ", round(urls.n/n,3), "mentions - ", round(mentions.n/n,3))
@@ -180,33 +197,111 @@ textCleaned <- comments.cut$textOriginal %>%
   str_replace_all("\"", "") %>% 
   #remove line break
   str_replace_all("\n", " ") %>% 
-  #remove at-mentions, tags and urls
-  str_replace_all("(^|\\s)(@|#|https|http|ftp?://)\\S+", " ") %>% 
+  #remove at-mentions and tags
+  str_replace_all("(@|#)\\S+", " ") %>% 
+  #remove urls
+  str_replace_all("(http|ftp|https)://\\S+\\s*", " ") %>% 
   #remove numbers
   str_replace_all("[0-9]+", " ") %>% 
   #remove all non-word characters
   str_replace_all("\\W+", " ") %>% 
+  #remove punctuations
+  str_replace_all("[[:punct:]]", " ") %>% 
   #lower case
   tolower() %>% 
+  #replace one or more whitespace characters by a single space
+  str_replace_all("\\p{space}+", " ") %>%
   #trim spaces at start and end
-  trimws() %>% 
-  #make tidy text dataset
-  tibble()
-
-head(textCleaned) 
+  str_remove_all("^\\s+|\\s+$")
 ```
+
+
 ```{r}
 cleaned <- comments.cut %>%
   mutate(textCleaned=textCleaned,
         .after=textOriginal)
 ```
 
-
 ignore replies and only focus on parent comment?
+
+```{r}
+head(cleaned %>% 
+       filter(ThreadComment==TRUE) %>%
+       select(textCleaned)
+     ,10)
+```
+better to separate threads and original comments
+
+```{r}
+original.com <- cleaned %>% 
+       filter(ThreadComment==FALSE)
+threads.com <- cleaned %>% 
+       filter(ThreadComment==TRUE)
+```
+
+```{r}
+head(original.com$textCleaned,10)
+```
+
+**Tokenization and a Sparse Matrix**
+
+```{r}
+ocomments <- corpus(original.com$textCleaned) %>% 
+  tokens() %>% 
+  tokens_remove(stopwords('en')) %>% 
+  #remove any kind of letter from any language
+  tokens_keep("^\\p{L}", valuetype='regex') 
+ocomments.dfm <- ocomments %>% dfm()
+head(ocomments.dfm)
+```
+
+```{r}
+textplot_wordcloud(ocomments.dfm, max_words=200)
+```
+Inspect and customize stop word list:
+https://smltar.com/stopwords.html
+
+```{r}
+setdiff(stopwords(source = "snowball"),
+        stopwords(source = "smart"))
+```
+
+use smart
+
+```{r}
+#add stopwords
+mystopwords <- stopwords("english", source = "smart")
+#remove stopwords
+ocomments <- ocomments %>% 
+  tokens_remove(mystopwords)
+ocomments.dfm <- ocomments %>% dfm()
+textplot_wordcloud(ocomments.dfm, max_words=200)
+```
+
+
+```{r}
+mystopwords <- c(mystopwords,"video","now","get","just","yes","know","will","day","people","someone","jaiden",
+                 #replace dont cant - w/out '
+                 stringi::stri_replace_all_fixed(stopwords("en"), "'", ""))
+ocomments <- ocomments %>% 
+  tokens_remove(mystopwords)
+ocomments.dfm <- ocomments %>% dfm()
+textplot_wordcloud(ocomments.dfm, max_words=200)
+```
+
+good example
+https://gist.github.com/CateGitau/05e6ff80b2a3aaa58236067811cee44e
 
 ### Exploratory analysis
 
-e.g., bag of words, n-grams
+e.g., bag of words, 
+
+n-grams
+https://chryswoods.com/text_analysis_r/ngrams.html
+
+ideas 
+https://monkeylearn.com/blog/sentiment-analysis-youtube-comments/
+
 
 ## Data Analysis
 
