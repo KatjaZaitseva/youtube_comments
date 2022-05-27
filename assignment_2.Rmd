@@ -21,6 +21,10 @@ header-includes:
 - \usepackage{setspace}
 - \usepackage{geometry}
 - \usepackage{graphicx}
+- \usepackage{fvextra}
+- \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+- \newcommand\cites[1]{\citeauthor{#1}'s\ (\citeyear{#1})}
+
 
 bibliography: references.bib
 ---
@@ -43,10 +47,10 @@ bibliography: references.bib
 	{\huge\bfseries Assignment 2:} \\ [0.25cm]
 	{\LARGE\bfseries Research Notebook}\\[0.2cm]
 	\HRule\\[1.5cm]
-	{\Large\textit{Group 24:}}\\
+	{\Large\textit{Group 24:}}\\[0.25cm]
 	\large Ekaterina \textsc{Zaitseva} - r0870363\\
 	\large Emma \textsc{Schweidler} - r0883088 \\
-	\large Jade \textsc{Willaert} - \\
+	\large Jade \textsc{Willaert} - r0762578\\
 	\vfill\vfill\vfill
 	{\large\today}
 	
@@ -63,12 +67,40 @@ bibliography: references.bib
 \pagenumbering{arabic} 
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+# add space between text and code chunks
+hook_source_def = knitr::knit_hooks$get('source')
+knitr::knit_hooks$set(source = function(x, options) {
+  if (!is.null(options$vspaceecho)) {
+    begin <- paste0("\\vspace{", options$vspaceecho, "}")
+    stringr::str_c(begin, hook_source_def(x, options))
+  } else {
+    hook_source_def(x, options)
+  }
+})
 
+hook_output_def = knitr::knit_hooks$get('output')
+knitr::knit_hooks$set(output = function(x, options) {
+  if (!is.null(options$vspaceout)) {
+    end <- paste0("\\vspace{", options$vspaceout, "}")
+    stringr::str_c(hook_output_def(x, options), end)
+  } else {
+    hook_output_def(x, options)
+  }
+})
+
+# global settings
+knitr::opts_chunk$set(echo = TRUE, message = F, warning = F, out.width="80%", fig.align="center",  fig.pos="H", vspaceecho='1em', vspaceout='1em')
+
+# formatting
 library(knitr)
 library(formatR)
-opts_chunk$set(tidy.opts=list(width.cutoff=90),tidy=TRUE)
+cutoff = 80
+opts_chunk$set(tidy.opts = list(width.cutoff = cutoff), tidy = TRUE)
+usage(head, width = cutoff)
+
+
 ```
+
 
 <!-- Make sure following aspects are included: short problem statement & research question (without extensive literature review), methodological design, description of data (collection), data cleaning/wrangling steps, analysis, robustness checks (if applicable), results, limitations, conclusion, pitch -->
 
@@ -78,64 +110,65 @@ In March of this year, the Youtube channel \citet{JaidenAnimationsVideo} uploade
 
 # Methodological Design
 
+brief outline and justification of our research design, ideally supported by scientific literature
+
 # Data
 
 ## Data Collection
 
-First, we need to scrap the comments via the Youtube API. There are two packages to pursue this: `vosonSML` package vs `tuber` package. However, there are reported issues with `tuber` package: \citep{IssuesTuber} and issues with nested comments in general: \citep{IssuesNestedComments} 
+import packages
 
 ```{r packages, message=F}
+# import packages
 library(tidyverse)
 library(tuber)
-#tokenization
 library(quanteda) 
 library(quanteda.textstats)
 library(quanteda.textplots)
-#corpus
 library(tm)
-#stopwords
 library(stopwords)
+library(lexicon)
 ```
 
-We tested both packages and we got the following results:
+First, we need to scrap the comments via the Youtube API. In R, there are two packages to pursue this: `vosonSML` and `tuber`. 
+
+There are reportedly issues with the `tuber` package \citep{IssuesTuber} and nested comments in general \citep{IssuesNestedComments} 
+
+At the time of data collection (i.e., 16th May 2022), the video had 231,866 comments. When scraping the comments under the video with both packages, we received the following results:
+
 \begin{itemize}
-  \item comments under the video at the time of data collection: 231,866
-  \item number of comments scraped with `tuber`: 180,743
-  \item number of comments scraped with `vosonSML`: 151,884
-  \item number of comments scraped with php tool \citep{RiederTools} (outwith R; only for benchmarking purposes): 218,848
+  \item `vosonSML`: 151,884 scraped comments
+  \item `tuber`: 180,743 scraped comments
 \end{itemize}
+
+For comparability purposes, we also used \cites{RiederTools} php tool which resulted in 218,848 scraped comments.
   
-Noteworthy that none of the tested packages and tools were able to extract all Youtube comments. Since our project is in R, we opted for the `tuber` package.
+It is noteworthy that none of the tested packages and tools were able to extract all Youtube comments. Since we conduct our analysis in R, we opted for the `tuber` package as this package parsed about 30,000 comments more than the `vosonSML` package.
 
 Code used to scrape comments (data were collected on 16th May 2022):
 
-```{r tuber, eval=F }
-# authenticate Youtube API (for security reasons, our personal APP_ID and APP_SECRET are not included in this script)
+<!-- I have deleted the part 'check that nested comments are presented in the dataset' in the code chunk below since I did not use it when collecting the data. To accurately present how we scraped the comments, please do not modify the following chunk! -->
+
+```{r tuber, eval = F}
+# authenticate Youtube API
+# (for security reasons, our personal APP_ID and APP_SECRET are not included in this script)
 yt_oauth("APP_ID", "APP_SECRET", token = '')
 
-#get statistics about the video
-get_stats(video_id="qF1DTK4U1AM")
+# get statistics about the video
+videoid <- "qF1DTK4U1AM"
+get_stats(video_id = videoid)
 
 # scrape comments
-comments <- get_all_comments(video_id = "qF1DTK4U1AM")
-
-#check that nested comments are presented in the dataset
-subcomments <- comments %>% filter(!is.na(parentId))
-dim(subcomments)
+comments <- get_all_comments(video_id = videoid)
 
 # write output to file
 write_csv(comments, "being_not_straight_16_may_22_tuber.csv")  
 ```
 
-Data import:
+<!-- I have removed the chunk 'locate the folder'. If you set up an RMarkdown project and link it to GitHub, you do not have to change the working directory as all relevant files will be in the project directory. Alternatively, you can set your working directory outside of the RMarkdown document. -->
 
-Set the working directory with a file
 
-```{r locate the folder}
-getwd()
-setwd("/Users/katerinazaitseva/Downloads/Education/Big Data for Social Science/Exam/youtube_comments-main")
-```
-
+## Data Wrangling
 
 ```{r data import}
 # import data
@@ -143,156 +176,239 @@ comments <- read.csv("being_not_straight_16_may_22_tuber.csv", header = T)
 ```
 
 
-## Data Wrangling
+### Data Frame Cleaning
 
-\textbf{Dataframe exploration}
-
-```{r}
+```{r variable names}
+# get variable names
 print(names(comments))
+```
+
+
+As suggested by \citet{YoutubeGenderSentiment}, any comments written by the content creator should be removed before embarking on the data analysis
+
+```{r remove creator comment}
+# remove comments posted by Jaiden Animations
+comments <- comments %>%
+  filter(!authorChannelId.value == 'UCGwu0nbY2wSkW8N-cghnLpA')
+```
+
+
+```{r boolean thread}
+# create Boolean variable for thread comments
+comments <- comments %>% 
+  mutate(ThreadComment = if_else(is.na(parentId), FALSE, TRUE)) 
+```
+
+Initially, we have 15 variables which are described in the official \citet{YoutubeDocumentation} documentation. 
+
+In our analysis, we will focus on the following properties of the video:
+<!-- the list needs paraphrasing or quotation marks (it's plagiarism otherwise) -->
+\begin{itemize}
+  \item \textit{textOriginal}: Raw text of the comment as it was initially posted or last updated; 
+  \item \textit{likeCount}: The total number of likes (positive ratings) the comment has received;
+  \item \textit{parentId}: The unique ID of the parent comment. This property is only set if the comment was submitted as a reply to another comment;
+  \item \textit{id}: Unique identifier of the comment;
+\end{itemize}
+
+Between the \textit{textDisplay} and \textit{textOriginal} variables, \textit{textOriginal} was chosen because \textit{textDisplay} is the comment's text which was retrieved in html format. Thus, for example, in  \textit{textDisplay}, video links may be replaced with video titles and we can count them as words the user wrote in the video or the emoji can be converted to text. Other variables, such as the publication date or the date of comment update, will be removed from the data frame as our main focus is on what people posted and how they responded. Moreover, we are aware that since we are working with social media comments, we have to take ethics into account - that's why we removed all usernames and user characteristics, thereby anonymising the comments. 
+
+
+
+
+<!-- Is the part about the variable moderationStatus needed? We already decided to proceed with four other columns, so I don't see the value of this -->
+
+According to \citet{YoutubeDocumentation}, valid values for the variable \emph{moderationStatus} are heldForReview, likelySpam, published, and rejected.
+
+```{r moderationStatus}
+# check values of variable moderationStatus
 comments %>% count(moderationStatus)
 ```
 
-Before starting the analysis, we should remove comments by the video creators themselves (\cite{YoutubeGenderSentiment})
-
-```{r}
-comments <- comments %>%
-  filter(!authorChannelId.value=='UCGwu0nbY2wSkW8N-cghnLpA')
-dim(comments)
-```
+Since the field \textit{moderationStatus} is empty, we will drop this column as well.
 
 
-Initially, we have 15 variables which are described in the official documentation by the link - https://developers.google.com/youtube/v3/docs/comments. We will focus on the following properties of the video:
-\textit{textOriginal} - raw text of the comment as it was initially posted or last updated; 
-\textit{likeCount} - the total number of likes (positive ratings) the comment has received;
-\textit{parentId} - The unique ID of the parent comment. This property is only set if the comment was submitted as a reply to another comment;
-\textit{id} - unique identifier of the comment;
- - the comment's moderation status, valid values are: heldForReview, likelySpam, published, rejected;
 
-Between the \textit{textDisplay} and \textit{textOriginal} variables, \textit{textOriginal} was chosen because \textit{textDisplay} is the comment's text which was retrieved in html format. Thus, e.g. in  \textit{textDisplay} video links may replaced with video titles and we can count them as words the user wrote in the video or the emoji can be converted to text. Other variables, such as the publication date or the date of comment update, we will remove from the dataframe, as our main focus is on what people posted and how it was responded to. Moreover, we are aware that since we are working with social media comments, we have to take ethics into account - that's why we removed all the usernames and users' characteristics, thereby anonymizing the comments. Since the field \textit{moderationStatus} is empty, we will drop this column as well.
-
-```{r cut dataframe}
-#make boolen variable instead of parentId
-comments <- comments %>% 
-  mutate(ThreadComment = if_else(is.na(parentId), FALSE, TRUE))
-#select columns
+```{r subset columns}
+# select columns
 comments.cut <- comments %>% select(c(id, textOriginal, likeCount, ThreadComment))
-sum(comments.cut$ThreadComment)
 ```
 
-The next step is to clean up \textit{textOriginal}, as this is the main variable we will be working with
-
-```{r}
-hashtags.n <- sum(str_detect(comments.cut$textOriginal, "#\\w+"))
-urls.n <- sum(str_detect(comments.cut$textOriginal, "(http|ftp|https)://\\S+\\s*"))
-mentions.n <- sum(str_detect(comments.cut$textOriginal, "@\\w+"))
-n <- dim(comments.cut)[1]
-cat("The share of comments with hashtags - ", round(hashtags.n/n,3), 
-    "urls - ", round(urls.n/n,3), "mentions - ", round(mentions.n/n,3))
-```
-
-Comparing to html format, there is not much to clean up in the original text, mainly just the quotation marks and line break. However, we have mentions and hashtags which need to be removed
-
-```{r}
-textCleaned <- comments.cut$textOriginal %>% 
-  str_replace_all("\"", "") %>% 
-  #remove line break
-  str_replace_all("\n", " ") %>% 
-  #remove at-mentions and tags
-  str_replace_all("(@|#)\\S+", " ") %>% 
-  #remove urls
-  str_replace_all("(http|ftp|https)://\\S+\\s*", " ") %>% 
-  #remove numbers
-  str_replace_all("[0-9]+", " ") %>% 
-  #remove all non-word characters
-  str_replace_all("\\W+", " ") %>% 
-  #remove punctuations
-  str_replace_all("[[:punct:]]", " ") %>% 
-  #lower case
-  tolower() %>% 
-  #replace one or more whitespace characters by a single space
-  str_replace_all("\\p{space}+", " ") %>%
-  #trim spaces at start and end
-  str_remove_all("^\\s+|\\s+$")
-```
+Next, we filter the comments by their thread status. By only retaining parent comments, the comments that were not scraped by the `tuber` package - which are most likely only comment replies due to issues with collecting nested comments with the Youtube API - do not affect our research.
 
 
-```{r}
-cleaned <- comments.cut %>%
-  mutate(textCleaned=textCleaned,
-        .after=textOriginal)
-```
-
-ignore replies and only focus on parent comment?
-
-```{r}
-head(cleaned %>% 
-       filter(ThreadComment==TRUE) %>%
-       select(textCleaned)
-     ,10)
-```
-better to separate threads and original comments
-
-```{r}
-original.com <- cleaned %>% 
+```{r separate data frame in parent-reply}
+# filter parent comments
+og.comments <- comments.cut %>% 
        filter(ThreadComment==FALSE)
-threads.com <- cleaned %>% 
-       filter(ThreadComment==TRUE)
 ```
 
-```{r}
-head(original.com$textCleaned,10)
-```
+<!-- Do we really need to compute the proportions of urls, taggings and comments (as in the chunk below)? I don't think it's related to our research aims -->
 
-**Tokenization and a Sparse Matrix**
+```{r hashtag-urls-taggings}
+# get number of hashtags
+hashtags.n <- sum(str_detect(og.comments$textOriginal, "#\\w+"))
 
-```{r}
-ocomments <- corpus(original.com$textCleaned) %>% 
-  tokens() %>% 
-  tokens_remove(stopwords('en')) %>% 
-  #remove any kind of letter from any language
-  tokens_keep("^\\p{L}", valuetype='regex') 
-ocomments.dfm <- ocomments %>% dfm()
-head(ocomments.dfm)
-```
+# get number or urls
+urls.n <- sum(str_detect(og.comments$textOriginal, "(http|ftp|https)://\\S+\\s*"))
 
-```{r}
-textplot_wordcloud(ocomments.dfm, max_words=200)
-```
-Inspect and customize stop word list:
-https://smltar.com/stopwords.html
+# get number of taggings
+mentions.n <- sum(str_detect(og.comments$textOriginal, "@\\w+"))
 
-```{r}
-setdiff(stopwords(source = "snowball"),
-        stopwords(source = "smart"))
-```
+# get number of comments
+n <- dim(og.comments)[1]
 
-use smart
-
-```{r}
-#add stopwords
-mystopwords <- stopwords("english", source = "smart")
-#remove stopwords
-ocomments <- ocomments %>% 
-  tokens_remove(mystopwords)
-ocomments.dfm <- ocomments %>% dfm()
-textplot_wordcloud(ocomments.dfm, max_words=200)
+# display results
+cat("Share of parent comments with hashtags:", round(hashtags.n/n,3), 
+    "\nShare of parent comments with urls:", round(urls.n/n,3), 
+    "\nShare of parent comments with taggings:", round(mentions.n/n,3))
 ```
 
 
-```{r}
-mystopwords <- c(mystopwords,"video","now","get","just","yes","know","will","day","people","someone","jaiden",
-                 #replace dont cant - w/out '
-                 stringi::stri_replace_all_fixed(stopwords("en"), "'", ""))
-ocomments <- ocomments %>% 
-  tokens_remove(mystopwords)
-ocomments.dfm <- ocomments %>% dfm()
-textplot_wordcloud(ocomments.dfm, max_words=200)
+### Noise Removal
+
+The next step is to clean the column \textit{textOriginal} as this is the main variable we will be working with.
+
+Compared to the html format of the comments (i.e., \emph{textDisplay}), not much data cleaning is needed in the original text. Nonetheless, we still have to remove noise such as quotation marks, line breaks, taggings and hashtags.
+
+<!-- I have deleted the pipes that remove non-word characters and punctuation from the chunk below, because they created issues with the stopword removal later on. Previously, "don't" became "don t" which is not part our stopword list and thus was not removed. If we first remove stopwords and then punctuation, this issue will not occur. -->
+
+```{r noise removal}
+# code adapted from lecture 4 part 1
+
+textCleaned <- og.comments$textOriginal %>% 
+  # remove backslashes
+  str_replace_all("\"", "") %>%
+  # remove line breaks
+  str_replace_all("\n", " ") %>%
+  # remove at-mentions and hashtags
+  str_replace_all("(@|#)\\S+", " ") %>% 
+  # remove urls
+  str_replace_all("(http|ftp|https)://\\S+\\s*", " ") %>%
+  # remove numbers
+  str_replace_all("[0-9]+", " ") %>%                      
+  # lower case
+  tolower() %>% 
+  # remove multiple whitespace characters
+  str_replace_all("\\p{space}+", " ") %>%     
+  # trim whitespace characters at start and end
+  str_remove_all("^\\s+|\\s+$") 
+
+# insert cleaned comments in a column after the original comments
+cleaned <- og.comments %>%
+  mutate(textCleaned = textCleaned,
+        .after = textOriginal)
 ```
 
-good example
+resource for stopwords (and data cleaning in general): https://smltar.com/stopwords.html
+
+<!-- Is there a stopword list tailored to social media data? -->
+
+### Tokenisation
+
+```{r tokenisation}
+# tokenise; remove stopwords, special characters and words with less than 3 characters
+comments_token <- corpus(cleaned$textCleaned) %>% 
+  tokens() %>%
+  tokens_remove(stopwords(source = 'smart')) %>%
+  tokens_keep("^\\p{L}", valuetype = 'regex') %>%
+  tokens_keep(min_nchar = 3)
+
+# show tokens of second comment
+comments_token[["text2"]]
+```
+
+### Lemmatisation
+
+We normalise the comments by means of lemmatisation
+
+```{r lemmatisation}
+# lemmatisation
+comments_lemma <- comments_token %>%
+  tokens_replace(pattern = hash_lemmas$token, replacement = hash_lemmas$lemma)
+
+# show lemmatised tokens of second comment
+comments_lemma[["text2"]]
+```
+
+### High Frequency Words
+
+```{r list freq words}
+# get high frequency words
+comments_freq <- comments_lemma %>%  
+  dfm() %>%
+  textstat_frequency() 
+
+# show ten most frequent words
+comments_freq %>%
+  head(10)
+```
+
+We can see in the Figure \@ref(fig:plot-frequency) that the word frequencies are unequally distributed. In the left plot, it is apparent that the 500 most frequent words account for about 95% of our data set. In the right plot, we find that over 10,000 words appear only once in all the comments. There are also seemingly no words that appear exactly seven, nine or eleven times.
+
+```{r plot-frequency, fig.cap="Word Distribution Frequencies"}
+# code for plot adapted from https://rpubs.com/wjnaramore/723341
+
+# plot cumulative distribution frequency (CDF)
+par(mfrow = c(1,2))
+plot(cumsum(comments_freq$frequency)/sum(comments_freq$frequency),
+     type = "l", xlab = "Number of Words", ylab = "Cumulative Distribution Frequency", 
+     main = "Word CDF", col = 'red',
+     panel.first = grid())
+
+# plot histogram of frequencies
+comments_hist <- hist(comments_freq$frequency, plot = FALSE)
+plot(comments_hist$counts, ylab = "Frequency", xlab = "Word Frequency",
+     main = "Word Frequency", log = "y", type = "h", col = 'red')
+par(mfrow = c(1,1))
+```
+
+
+To identify words that are not meaningful, we went through the 100 most frequent words (output omitted due to its length). Upon identification, the words were removed from the corpus.
+
+```{r remove freq word}
+# add words to stopword list
+my_stopwords <- stopwords('english', source = 'smart')
+my_stopwords <- c(my_stopwords, c('feel', 'people', 'video', 'jaiden', 'make', 'thing', 
+                                  'lot', 'year', 'part', 'stuff', 'do', 'kinda', 'yes', 'back'))
+  
+# remove stopwords
+comments_stopw <- comments_lemma %>% 
+  tokens_remove(my_stopwords) %>%
+  dfm()
+
+head(comments_stopw)
+```
+
+
+<!-- What about low frequency words? For now, I would keep them, because they may be meaningful in the sentiment analysis. However, they are unlikely to be relevant in the topic model, so we might have to remove them then.-->
+
+
+<!-- What about word embeddings/word2vec and n-grams?
+If we decide to use word2vec, we should self-train our own model since pre-trained word embeddings tend to be biased (e.g., racist, sexist) https://smltar.com/embeddings.html#fairnessembeddings
+
+Even self-trained models on Wikipedia and social media data are seemingly homophobic \citep{Papakyriakopoulos2020}, so maybe we shouldn't include them and justify this decision with this paper? --> 
+
+
+good example [of data cleaning]
 https://gist.github.com/CateGitau/05e6ff80b2a3aaa58236067811cee44e
 
-### Exploratory analysis
+
+### Data Exploration
+
+Figure \@ref(fig:word-cloud) visualises the word frequencies in form of a word cloud
+
+```{r word-cloud, fig.cap="Word Cloud"}
+# print word cloud
+textplot_wordcloud(comments_stopw, max_words = 200)
+```
+
+
+
+```{r n-grams}
+# build bigrams and trigrams
+comments_lemma %>% 
+  tokens_remove(my_stopwords) %>% tokens_ngrams(1:3)
+```
 
 e.g., bag of words, 
 
@@ -305,13 +421,14 @@ https://monkeylearn.com/blog/sentiment-analysis-youtube-comments/
 
 ## Data Analysis
 
-### Sentiment analysis
+
+### Sentiment Analysis
 
 dictionary-based sentiment analysis to quantify how most people felt about the video (i.e., positively or negatively)
 
-### Sentiment analysis with weights
+### Sentiment Analysis with Weights
 
-### Topic modeling
+### Topic Modelling
 
 ## Robustness Checks
 
@@ -320,6 +437,12 @@ dictionary-based sentiment analysis to quantify how most people felt about the v
 # Limitations
 
 not all comments were scraped
+
+did not take emojis into account (merely focussed on raw text)
+
+only considered parent comments
+
+ambiguity of words, for example, 'love' (In the context of this study, love is a central term. However, it is also likely to be associated with a positive sentiment. In a comment to a video about aromanitcism, the term may be used to refer to the content of the video, not to express an opinion/sentiment)
 
 # Conclusion
 
