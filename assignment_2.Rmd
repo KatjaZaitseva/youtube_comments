@@ -426,6 +426,55 @@ https://monkeylearn.com/blog/sentiment-analysis-youtube-comments/
 
 dictionary-based sentiment analysis to quantify how most people felt about the video (i.e., positively or negatively)
 
+```{r sentiment analysis}
+# followin code is adapted from lecture 5
+install.packages("vader")
+library(vader)
+#I first sampled 100 comments, since it took too long to run
+sample_cleaned <- sample_n(cleaned, 100)
+#next I used the vade_df function
+vader_results<-vader_df(sample_cleaned$textCleaned)
+vader_results
+mean_vader<-mean(vader_results$compound)
+#the mean is positive, so more positive comments
+mean_vader
+
+#graphical representation of compound scores
+hist(vader_results$compound)
+```
+```{r sentiment analysis}
+#next, I also wanted to try out a different approach with lists of positive and nevative words
+# followin code is adapted from lecture 5
+#load dictionary with positive words and with negative words
+poswords = "https://cssbook.net/d/positive.txt"
+negwords = "https://cssbook.net/d/negative.txt"
+pos = scan(poswords, what="list")
+neg = scan(negwords, what="list")
+head(neg, 10)
+head(pos, 10)
+sentimentdict = dictionary(list(pos=pos, neg=neg))
+sentimentdict
+
+#Select only random 100 reviews to speed up analysis
+dic_scores = sample_cleaned$textCleaned %>% 
+  corpus()%>%
+  tokens() %>% 
+  dfm() %>% 
+  #apply dictionary to dfm
+  dfm_lookup(sentimentdict) %>% 
+  convert(to = "data.frame") %>% 
+  mutate(sent = pos - neg)
+head(dic_scores)
+colnames(dic_scores)
+
+
+#the mean is positive, so more positive comments
+mean_dic<-mean(dic_scores$sent)
+mean_dic
+
+#graphical representation of compound scores
+hist(dic_scores$sent)
+```
 ### Sentiment Analysis with Weights
 
 ### Topic Modelling
