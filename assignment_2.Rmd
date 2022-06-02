@@ -47,7 +47,7 @@ bibliography: references.bib
 	{\huge\bfseries Assignment 2:} \\ [0.25cm]
 	{\LARGE\bfseries Research Notebook}\\[0.2cm]
 	\HRule\\[1.5cm]
-	{\Large\textit{Group 24:}}\\[0.25cm]
+	{\Large\emph{Group 24:}}\\[0.25cm]
 	\large Ekaterina \textsc{Zaitseva} - r0870363\\
 	\large Emma \textsc{Schweidler} - r0883088 \\
 	\large Jade \textsc{Willaert} - r0762578\\
@@ -63,7 +63,7 @@ bibliography: references.bib
  
 \newpage
 
-\newgeometry{top=1in,bottom=1in,right=1in,left=1in}
+\newgeometry{top = 1in, bottom = 1in, right = 1in, left = 1in}
 \pagenumbering{arabic} 
 
 ```{r setup, include=FALSE}
@@ -89,7 +89,7 @@ knitr::knit_hooks$set(output = function(x, options) {
 })
 
 # global settings
-knitr::opts_chunk$set(echo = TRUE, message = F, warning = F, out.width="80%", fig.align="center",  fig.pos="H", vspaceecho='1em', vspaceout='1em')
+knitr::opts_chunk$set(echo = TRUE, message = F, warning = F, out.width="60%", fig.align="center",  fig.pos="H", vspaceecho='1em', vspaceout='1em')
 
 # formatting
 library(knitr)
@@ -102,52 +102,44 @@ usage(head, width = cutoff)
 ```
 
 
-<!-- Make sure following aspects are included: short problem statement & research question (without extensive literature review), methodological design, description of data (collection), data cleaning/wrangling steps, analysis, robustness checks (if applicable), results, limitations, conclusion, pitch -->
-
 # Research Question
 
-In March of this year, the Youtube channel \citet{JaidenAnimationsVideo} uploaded a video titled ‘Being Not Straight’. The animated story, which has since received almost 12 million views, is a coming out video that introduces the audience to aromanticism and asexuality. As both of these orientations are still relatively unknown, our project seeks to analyse the comment section under the video so as to investigate how the video was received. More precisely, we are interested in the audience's sentiment and the main topics discussed in the comments.
+In March of this year, the Youtube channel \citet{JaidenAnimationsVideo} uploaded a video titled ‘Being Not Straight’. The animated story, which has since received over 13 million views, is a coming out video that introduces the audience to aromanticism and asexuality\footnote{There are no agreed definitions of aromonaticism and asexuality. Common operationalisations include self-identification and the experience of little to no romantic and/or sexual attraction, desire, fantasies and/or interest \citep{Catri2021}.}. As both of these orientations are still relatively unknown, our project seeks to analyse the comment section under the video so as to investigate how the video was received. More precisely, we are interested in the audience's sentiment and the main topics discussed by the viewers.
 
 # Methodological Design
 
-brief outline and justification of our research design, ideally supported by scientific literature
+To address our research aims, we use a combination of web scraping, sentiment analysis and topic modelling. The first step in this process is to scrape the comments via the Youtube API after which we clean and explore the data. For this, we use a range of methods, namely subsetting, noise removal, negation bigrams, stopword removal, collocations, lemmatisation and the removal of high frequency words. After that, we conduct a dictionary-based sentiment analysis to quantify how the majority of viewers felt about the video (i.e., positively or negatively). This process consists of two steps: First, we carry out a sentiment analysis with the cleaned comments. Second, we account for any differences in the comments' popularity by weighting each comment according to their number of likes. The sentiment analysis is then re-run to investigate whether the weighting yields any different results. In the final step, we build a topic model to explore the key themes in the comments.
 
-# Data
+# Data Collection
 
-## Data Collection
+<!-- A general note on visualisations: We don't have to include plots for absolutely everything. One word cloud is enough for the report. So is one histogram for the sentiment analysis. I'd rather have fewer but well-designed and meaningful figures than plenty of messy and redundant ones. -->
 
-import packages
+Before starting our analysis, we load all required packages in RStudio. 
 
 ```{r packages, message=F}
-# import packages
+# load packages
 library(tidyverse)
+library(RColorBrewer)
 library(tuber)
 library(quanteda) 
 library(quanteda.textstats)
 library(quanteda.textplots)
-library(tm)
 library(stopwords)
 library(lexicon)
 library(Matrix)
 library(vader)
+library(ldatuning)
+library(tidytext)
 ```
 
-First, we need to scrap the comments via the Youtube API. In R, there are two packages to pursue this: `vosonSML` and `tuber`. 
-
-There are reportedly issues with the `tuber` package \citep{IssuesTuber} and nested comments in general \citep{IssuesNestedComments} 
-
-At the time of data collection (i.e., 16th May 2022), the video had 231,866 comments. When scraping the comments under the video with both packages, we received the following results:
+Subsequent to setting up our R session, we turn to the data collection. In R, there are two packages for scraping Youtube comments: `vosonSML` and `tuber`. To decide which package to settle with, we retrieve the comments using both tools and compare the obtained results. At the time of data collection, that is, the 16th May 2022, \cites{JaidenAnimationsVideo} video had 231,866 comments. When scraping the comments, we receive the following data:
 
 \begin{itemize}
-  \item `vosonSML`: 151,884 scraped comments
-  \item `tuber`: 180,743 scraped comments
+  \item \emph{vosonSML}: 151,884 scraped comments
+  \item \emph{tuber}: 180,743 scraped comments
 \end{itemize}
 
-For comparability purposes, we also used \cites{RiederTools} php tool which resulted in 218,848 scraped comments.
-  
-It is noteworthy that none of the tested packages and tools were able to extract all Youtube comments. Since we conduct our analysis in R, we opted for the `tuber` package as this package parsed about 30,000 comments more than the `vosonSML` package.
-
-Code used to scrape comments (data were collected on 16th May 2022):
+For comparability purposes, we also use \cites{RiederTools} web tool to extract the comments which resulted in 218,848 observations. What is striking about these results is that none of the tested packages and tools are able to extract all Youtube comments. Since we conduct our analysis in R, we opt for the `tuber` package as it parses about 30,000 comments more than the `vosonSML` package and has a better documentation of issues regarding the number of returned comments \citep[see e.g.,][]{IssuesTuber}. The exact code we used to collect our data on the 16th May 2022 is shown below.
 
 ```{r tuber, eval = F}
 # authenticate Youtube API
@@ -165,7 +157,9 @@ comments <- get_all_comments(video_id = videoid)
 write_csv(comments, "being_not_straight_16_may_22_tuber.csv")  
 ```
 
-## Data Wrangling
+# Data Wrangling
+
+Upon collecting the comments and saving them to a csv file, we import them in RStudio.
 
 ```{r data import}
 # import data
@@ -173,15 +167,16 @@ comments <- read.csv(unzip("being_not_straight_16_may_22_tuber.csv.zip","being_n
 ```
 
 
-### Data Frame Cleaning
+## Data Frame Cleaning
+
+To get to know our data, we inspect the variables in the data set.
 
 ```{r variable names}
 # get variable names
 print(names(comments))
 ```
 
-
-As suggested by \citet{YoutubeGenderSentiment}, any comments written by the content creator should be removed before embarking on the data analysis
+We then follow \cites{YoutubeGenderSentiment} suggestion to remove any comments written by the content creator before embarking on the data analysis.
 
 ```{r remove creator comment}
 # remove comments posted by Jaiden Animations
@@ -189,6 +184,7 @@ comments <- comments %>%
   filter(!authorChannelId.value == 'UCGwu0nbY2wSkW8N-cghnLpA')
 ```
 
+Next, we create a new column indicating whether a comment is a parent comment (i.e., a main comment) or a reply (i.e., a response to another comment).
 
 ```{r boolean thread}
 # create Boolean variable for thread comments
@@ -196,47 +192,40 @@ comments <- comments %>%
   mutate(ThreadComment = if_else(is.na(parentId), FALSE, TRUE)) 
 ```
 
-<!-- I decided to include the information about the variable moderationStatus because if there were any values there, it would be important to us. But the fact that we checked it out and found nothing is still valuable, so I would keep it. -->
-
-According to \citet{YoutubeDocumentation}, valid values for the variable \emph{moderationStatus} are heldForReview, likelySpam, published, and rejected. We will therefore first check what values are in this variable and delete comments that are marked as spam or have been rejected, if there are any.
+After that, we examine the values of the the variable \emph{moderationStatus}. This will help us to eliminate any comments marked as spam. According to \citet{YoutubeDocumentation}, valid values for this parameter are heldForReview, likelySpam, published, and rejected. 
 
 ```{r moderationStatus}
 # check values of variable moderationStatus
 comments %>% count(moderationStatus)
 ```
 
-Since the field \textit{moderationStatus} is empty, we will not proceed with this column.
+Given that there are no valid values for the variable \emph{moderationStatus}, we will drop this column when subsetting our data frame.
 
-Initially, we have 15 variables which are described in the official \citet{YoutubeDocumentation} documentation. 
+As we have seen above when inspecting the variable names, our data set includes 15 variables, a description of which can be found in the official \citet{YoutubeDocumentation} documentation. In our analysis, we will focus on the following four properties of the video:
 
-In our analysis, we will focus on the following properties of the video:
-<!-- the list was paraphrased -->
 \begin{itemize}
-  \item \textit{textOriginal}: unprocessed commentary text as originally published or last updated
-  \item \textit{likeCount}: number of likes on the comment
-  \item \textit{parentId}: unique identifier of the parent comment, only filled in if the comment is a response to another comment
-  \item \textit{id}: unique identifier of the comment
+  \item \emph{textOriginal}: Unprocessed commentary text as originally published or last updated
+  \item \emph{likeCount}: Number of likes on the comment
+  \item \emph{parentId}: Unique identifier of the parent comment, only filled in if the comment is a response to another comment
+  \item \emph{id}: Unique identifier of the comment
 \end{itemize}
 
-Between the \textit{textDisplay} and \textit{textOriginal} variables, \textit{textOriginal} was chosen because \textit{textDisplay} is the comment's text which was retrieved in html format. Thus, for example, in  \textit{textDisplay}, video links may be replaced with video titles and we can count them as words the user wrote in the video or the emoji can be converted to text. Other variables, such as the publication date or the date of comment update, will be removed from the data frame as our main focus is on what people posted and how they responded. Moreover, we are aware that since we are working with social media comments, we have to take ethics into account - that's why we removed all usernames and user characteristics, thereby anonymising the comments. 
+The decision to proceed with the variable \emph{textOriginal} rather than \emph{textDisplay} was motivated by the fact that the column \emph{textDisplay} contains the comments in html format. Consequently, html tags and entities are present in these texts which would create more work when cleaning the comments. Other variables, such as publication date or date of comment update, are also dropped from the data frame as they are irrelevant for addressing our research questions. Most importantly, when subsetting the data frame, we remove all usernames and user characteristics as we are not interested in any personal information. In doing so, we anonymise the comments. 
 
 ```{r subset columns}
 # select columns
 comments.cut <- comments %>% select(c(id, textOriginal, likeCount, ThreadComment))
 ```
 
-Next, we filter the comments by their thread status. By only retaining parent comments, the comments that were not scraped by the `tuber` package - which are most likely only comment replies due to issues with collecting nested comments with the Youtube API - do not affect our research.
-
+Subsequently, we filter the comments by their thread status. By only retaining parent comments, the comments that were not scraped by the `tuber` package --- which, according to \citet{IssuesTuber} and \citet{IssuesNestedComments} are likely comment replies in nested comments --- do not affect our research.
 
 ```{r separate data frame in parent-reply}
 # filter parent comments
 og.comments <- comments.cut %>% 
-       filter(ThreadComment==FALSE)
+       filter(ThreadComment == FALSE)
 ```
 
-<!-- Do we really need to compute the proportions of urls, taggings and comments (as in the chunk below)? I don't think it's related to our research aims -->
-
-<!-- Counting the proportion of urls, taggings and hashtags in the comments is just to check if they are there at all, and to understand exactly how much text we will remove. It could be that people are using a lot of hashtags, then we would need to look in more detail to see if they are all worth deleting. This is part of the exploratory analysis. -->
+To get a sense of how much data cleaning is needed, we now investigate the presence of special characters and non-English words in the data. We do this by computing the proportion of hashtags, urls, taggings and non-ASCII characters in the comments.
 
 ```{r hashtag-urls-taggings}
 # get number of hashtags
@@ -248,7 +237,7 @@ urls.n <- sum(str_detect(og.comments$textOriginal, "(http|ftp|https)://\\S+\\s*"
 # get number of taggings
 mentions.n <- sum(str_detect(og.comments$textOriginal, "@\\w+"))
 
-# get number of tweets with non-ASCII characters - emojis and non-English words
+# get number of tweets with non-ASCII characters
 nonengl.n <- sum(str_detect(og.comments$textOriginal, "[^\x01-\x7F]"))
 
 # get number of comments
@@ -258,318 +247,417 @@ n <- dim(og.comments)[1]
 cat("Share of parent comments with hashtags:", round(hashtags.n/n,3), 
     "\nShare of parent comments with urls:", round(urls.n/n,3), 
     "\nShare of parent comments with taggings:", round(mentions.n/n,3),
-    "\nShare of parent comments with words in non-English languages:", round(nonengl.n/n,3))
+    "\nShare of parent comments with non-English words:", round(nonengl.n/n,3))
 ```
 
+## Noise Removal and Tokenisation
 
-### Noise Removal
+Following the pre-processing of the data frame, we move on to cleaning our main variable \emph{textOriginal}. We start this process by tokenising the comments, removing punctuation, symbols and urls, converting the text to lower case and replacing contractions. We moreover use the padding argument to keep track of the position of each word. 
 
-The next step is to clean the column \textit{textOriginal} as this is the main variable we will be working with.
-
-Compared to the html format of the comments (i.e., \emph{textDisplay}), not much data cleaning is needed in the original text. Nonetheless, we still have to remove noise such as quotation marks, line breaks, taggings, hashtags and non-English words.
-
-```{r noise removal}
-# code adapted from lecture 4 part 1
-
-textCleaned <- og.comments$textOriginal %>% 
-  # remove backslashes
-  str_replace_all("\"", "") %>%
-  # remove line breaks
-  str_replace_all("\n", " ") %>%
-  # remove at-mentions and hashtags
-  str_replace_all("(@|#)\\S+", " ") %>% 
-  # remove urls
-  str_replace_all("(http|ftp|https)://\\S+\\s*", " ") %>%
-  # remove numbers
-  str_replace_all("[0-9]+", " ") %>%       
-  #remove common non-ASCII characters
-  str_replace_all("[^\x01-\x7F]", " ") %>%    
-  # lower case
-  tolower() %>% 
-  # remove multiple whitespace characters
-  str_replace_all("\\p{space}+", " ") %>%     
-  # trim whitespace characters at start and end
-  str_remove_all("^\\s+|\\s+$") 
-
-# insert cleaned comments in a column after the original comments
-cleaned <- og.comments %>%
-  mutate(textCleaned = textCleaned,
-        .after = textOriginal)
-```
-
-
-Remove rows which contained only the characters we got rid of
-
-```{r remove empty rows}
-cleaned <- cleaned[cleaned$textCleaned!="",]
-```
-
-resource for stopwords (and data cleaning in general): https://smltar.com/stopwords.html
-
-<!-- Is there a stopword list tailored to social media data? 
-
-I didn't find
--->
-
-### Tokenisation
+<!-- The following chunk does pretty much the same as the long 'noise removal' chunk we previously had (i.e., removing punctuation, urls, etc). It is not only much more concise but also has the advantage of including a padding statement which tracks the position of each word in the comments. This will come in handy when generating the n-grams later on. -->
 
 ```{r tokenisation}
-# tokenise; remove stopwords, special characters and words with less than 3 characters
-comments_token <- corpus(cleaned$textCleaned) %>% 
-  tokens() %>%
-  tokens_remove(stopwords(source = 'smart')) %>%
-  tokens_keep("^\\p{L}", valuetype = 'regex') %>%
-  tokens_keep(min_nchar = 3)
+contract <- c("dont", "don't", "doesn't", "isn't", "can't", "didn't")
+long <- rep("not", length(contract))
 
-# show tokens of second comment
-comments_token[["text2"]]
+comments_token <- corpus(og.comments$textOriginal) %>% 
+  tokens(remove_punct = T, remove_symbols = T, remove_url = T, padding = T) %>%
+  tokens_keep("^\\p{L}", valuetype = 'regex') %>%
+  tokens_tolower %>%
+  tokens_replace(contract, long)
 ```
 
-### Lemmatisation
+<!-- Because of the adapted code, empty rows cannot be removed with the code in the previous version. However, this is not a problem, because it actually makes sense to keep them in the data set to facilitate the weighting process later on in the script. I have removed all empty rows as part of the topic modelling processing further down. -->
 
-We normalise the comments by means of lemmatisation
+
+## Negation Bigrams
+
+<!-- I appreciate that the part on n-grams probably took quite some time to code, but there are several issues with it.
+
+1) It doesn't make any sense to generate n-grams after the data wrangling. The whole point of n-grams is to capture adjacent words. Once the comments are cleaned, words that did not initially occur after one another may be put together in a bigram in which case the bigram would not accurately represent the text.
+
+2) Changing the order of the words in a bigram might change the the bigram's meaning. 
+
+Instead, it would be better to be more selective when using bigrams (e.g., by focussing on negative bigrams that add value when doing the sentiment analysis and collocations) (see https://tutorials.quanteda.io/basic-operations/tokens/tokens_ngrams/). The following chunks do just that. -->
+
+To account for negations, we generate negation bigrams (i.e., bigrams that start with a negation word). We then replace the individual two words of the negation bigram by the negation bigram. The code for this procedure is adapted from \citep{QuantedaNGrams}.
+
+```{r negation bigrams}
+# prepare negation words
+neg_words <- c('no', 'not', "don't", "doesn't", "isn't", "can't", "didn't")
+neg_words_star <- paste(neg_words, " *", sep = "")
+
+# replace separated words with negative bigrams
+toks_neg_bigram <- comments_token %>% tokens_compound(pattern = phrase(neg_words_star))
+
+# show tokens of 15th comment
+toks_neg_bigram[["text2"]]
+```
+
+## Stopwords
+
+<!-- resource for stopwords (and data cleaning in general): https://smltar.com/stopwords.html -->
+
+Now that we have accounted for negation words, we can remove them along with other stopwords. For this, we use the 'smart' dictionary, as the 'en' dictionary is somewhat inconsistent: Whilst 'can't' and 'cannot' are removed, its counterpart 'can' is not which would lead to skewed results. Again, we use the padding statement to remember the initial position of each word in a comment.
+
+```{r stopwords}
+# select dictionary
+my_stopwords <- quanteda::stopwords(source = 'smart')
+
+# remove stopwords
+no_stopw <- toks_neg_bigram %>%
+  tokens_remove(my_stopwords, padding = TRUE)
+
+# show tokens of 15th comment
+no_stopw[["text2"]]
+```
+
+
+## Collocations
+
+We next check for the most common collocations (i.e., n-grams that occur more often than by chance). As part of this procedure, we set the minimum number of occurrences to 10 and limit the n-grams to bigrams. Moreover, because we consistently used the padding statement, the function will only generate a bigram when two words were adjacent in the original comment. We follow the example of \citet{QuantedaCompound} in our code.
+
+```{r collocations}
+# code adapted from https://tutorials.quanteda.io/advanced-operations/compound-mutiword-expressions/
+
+# remove non-words
+toks_comments_cap <- no_stopw %>%
+  tokens_select(pattern = "^[A-Z]",
+                valuetype = "regex",
+                case_insensitive = TRUE, 
+                padding = TRUE)
+
+# get collocations
+tstat_col_com <- toks_comments_cap %>%
+  textstat_collocations(min_count = 10, tolower = TRUE, size = 2)
+
+# print 20 most used collocations
+tstat_col_com %>% head(20) %>% as.data.frame() %>% select(c(collocation, count, z))
+```
+
+Once we have identified the collocations, we add the collocations with a z score of greater than 50 to our data. A similar procedure as with the negation bigrams is used for this (e.g., two individual words of a collocation are replaced by the collocation). In our code implementation, we draw upon \cites{Lecture4Part2} lecture slides.
+
+```{r replace collocations}
+# filter collocations
+collocations <- tstat_col_com %>%
+  filter(z > 50) %>% 
+  pull(collocation) %>%
+  phrase()
+
+# add filtered collocations to tokenised comments
+coll <- no_stopw %>% 
+  tokens_compound(collocations, join = F)
+
+coll[['text2']]
+```
+
+## Lemmatisation
+
+To further reduce the dimensionality of our data, we normalise the comments by means of lemmatisation. For this endeavour, we initially sought to utilize part-of-speech tagging with the `spacyr` or `udpipe` packages; however, since we encountered the same issue as the one reported by \citet{GitSpacyR} on GitHub, we could not proceed with this procedure and instead used the lemmatisation method of the `quanteda` package.
 
 ```{r lemmatisation}
 # lemmatisation
-comments_lemma <- comments_token %>%
+comments_lemma <- coll %>%
   tokens_replace(pattern = hash_lemmas$token, replacement = hash_lemmas$lemma)
 
 # show lemmatised tokens of second comment
 comments_lemma[["text2"]]
 ```
 
-## Data Exploration
+<!-- I removed the heading 'Data Exploration', because the subsection 'High Frequency Words' still belongs to the section 'Data Wrangling'. Obviously, this does not mean that we can't include plots and tables. We just don't need a designated heading for that. -->
 
-### High Frequency Words
+## High Frequency Words
 
-```{r list freq words}
+The last step of our data cleaning process revolves around the removal of high frequency words. Low frequency words are not removed at this stage as they may be valuable for the sentiment analysis. Before removing any tokens, we calculate a frequency statistic.
+
+```{r freq stat}
 # get high frequency words
 comments_freq <- comments_lemma %>%  
+  tokens_remove("") %>%
   dfm() %>%
-  textstat_frequency() 
-
-# show ten most frequent words
-comments_freq %>%
-  head(10)
+  textstat_frequency()
 ```
 
-We can see in the Figure \@ref(fig:plot-frequency) that the word frequencies are unequally distributed. In the left plot, it is apparent that the 500 most frequent words account for about 95% of our data set. In the right plot, we find that over 10,000 words appear only once in all the comments. There are also seemingly no words that appear exactly seven, nine or eleven times.
+Next, we visualise the word frequencies. The code for the following plot is adapted from \citet{FreqPlot}.
 
-```{r plot-frequency, fig.cap="Word Distribution Frequencies"}
-# code for plot adapted from https://rpubs.com/wjnaramore/723341
-
+```{r plot-frequency, fig.cap = "Word Distribution Frequencies", out.height = "70%"} 
 # plot cumulative distribution frequency (CDF)
 par(mfrow = c(1,2))
 plot(cumsum(comments_freq$frequency)/sum(comments_freq$frequency),
      type = "l", xlab = "Number of Words", ylab = "Cumulative Distribution Frequency", 
-     main = "Word CDF", col = 'red',
-     panel.first = grid())
+     main = "Word CDF", col = 'red')
 
 # plot histogram of frequencies
 comments_hist <- hist(comments_freq$frequency, plot = FALSE)
 plot(comments_hist$counts, ylab = "Frequency", xlab = "Word Frequency",
      main = "Word Frequency", log = "y", type = "h", col = 'red')
+
 par(mfrow = c(1,1))
+
 ```
 
-To identify words that are not meaningful, we went through the 100 most frequent words (output omitted due to its length). Upon identification, the words were removed from the corpus.
+As we can see in Figure \@ref(fig:plot-frequency), the word frequencies are unequally distributed. In the left plot, it is apparent that the 500 most frequent words account for about 95% of our data set. In the right plot, we find that over 10,000 words appear only once in all the comments. There are also seemingly no words that appear exactly seven or eleven times.
+
+Following this discovery, we inspect the most used words across all comments.
+
+```{r list freq words}
+# show ten most frequent words
+comments_freq %>%
+  head(10) %>% as.data.frame() %>% select(-group)
+```
+
+To identify words that are not meaningful to our analysis, we now go through the 100 most frequent words (output omitted due to its length). Upon identification, we remove irrelevant words from the corpus. We also drop any words with less than three characters.
 
 ```{r remove freq word}
 # add words to stopword list
-my_stopwords <- stopwords('english', source = 'smart')
-my_stopwords <- c(my_stopwords, c('feel', 'people', 'video', 'jaiden', 'make', 'thing', 
-                                  'lot', 'year', 'part', 'stuff', 'do', 'kinda', 'yes', 'back'))
+my_stopwords_ext <- c(my_stopwords, c(' ', 'feel', 'people', 'video', 'jaiden', 'make', 'thing', 
+                                  'lot', 'year', 'part', 'stuff', 'do', 'kinda', 'yes', 'back',
+                                  "she's"))
   
 # remove stopwords
-comments_stopw <- comments_lemma %>% 
-  tokens_remove(my_stopwords) %>%
-  dfm()
+cleaned_comments <- comments_lemma %>% 
+  tokens_remove(my_stopwords_ext) %>%
+  tokens_keep(min_nchar = 3)
 
-head(comments_stopw)
+head(cleaned_comments)
 ```
 
-Since we analyse each individual comment, it was decided not to remove low frequency words at this stage.
+Lastly, we visualise the word frequencies of the cleaned comments. This takes the form of a word cloud and is shown in Figure \@ref(fig:word-cloud). The code for this was taken from \cites{Lecture4Part2} lecture slides.
 
-<!-- good example [of data cleaning]
-https://gist.github.com/CateGitau/05e6ff80b2a3aaa58236067811cee44e --> 
-
-Figure \@ref(fig:word-cloud) visualises the word frequencies in form of a word cloud. 
-
-```{r word-cloud, fig.cap="Word Cloud"}
-# print word cloud, code is adapted from Lecture 4 (Part 2)
-colors = RColorBrewer::brewer.pal(8, "Accent")
-textplot_wordcloud(comments_stopw, max_words=200, 
-    #regulate size of the samllest and largest words               
-    min_size = 1, max_size=4, 
-    # words will be plotted in decreasing freq
-    random_order=FALSE,
-    # colors will be assigned based on freq
-    random_color= FALSE, color=colors)
+```{r word-cloud, fig.cap = "Word Cloud of Cleaned Comments"}
+# generate word cloud
+cleaned_comments %>% dfm() %>%
+  textplot_wordcloud(max_words = 200, 
+                   color = brewer.pal(8, "Dark2"),
+                   random_order = FALSE,
+                   min_size = 1, max_size = 4,
+                   random_color = FALSE)
 ```
+Based on the word cloud, the comments seem to be rather positive. Among the prevalent words are the terms 'love', 'happy', 'good', 'cool', 'glad', 'nice', 'great', 'awesome', which suggest that the viewership reacted positively. However, these preliminary findings must be approach with caution since they stem from merely a descriptive analysis.
 
-```{r build n-grams}
-# build bigrams from tokens after lemmatisation
-comments_ngram <- comments_lemma %>% 
-  tokens_remove(my_stopwords) %>% 
-  tokens_ngrams(2, concatenator = " ") %>% 
-  dfm()
-
-head(comments_ngram)
-```
-
-```{r frequency of n-grams}
-# get frequency of ngrams
-comments_ngram_freq <- comments_ngram %>%
-  textstat_frequency() 
-
-# show ten most frequent words
-# part of code is taken from https://quanteda.io/reference/textstat_frequency.html
-ggplot(comments_ngram_freq[1:10, ], aes(x = reorder(feature, frequency), y = frequency)) +
-    geom_point() +
-    coord_flip() +
-    labs(x = NULL, y = "Frequency")
-```
-We may notice that bigram has the problem that they may be the same in terms of word combinations, but the words are in different places, so they count as different (like 'aro ace' and 'ace aro'). We could not find a built-in function in R to eliminate this problem, so an algorithm was written.
-
-```{r sum reversed bigrams}
-#split bigrams, sort words within each bigram and collapse them together 
-colnames(comments_ngram) <- sapply(strsplit(colnames(comments_ngram), " "), function(x) paste(sort(x), collapse=" "))
-#the code for sparseMatrix to combine columns with identical names was adapted from https://stackoverflow.com/questions/36778166/how-to-combine-columns-with-identical-names-in-a-large-sparse-matrix
-nms <- colnames(comments_ngram)
-uniquenms <- unique(nms)
-
-comments_ngram_coll <- comments_ngram %*% 
-  sparseMatrix(i = seq_len(ncol(comments_ngram)), j = match(nms, uniquenms),
-               dimnames = list(nms, uniquenms), x = 1L)
-comments_ngram_combined <- as.dfm(comments_ngram_coll)
-head(comments_ngram_combined)
-```
+# Data Analysis
 
 
-```{r frequency of bigrams}
-# get frequency of ngrams
-comments_ngram_combined_freq <- comments_ngram_combined %>%
-  textstat_frequency() 
+## Sentiment Analysis
 
-# show ten most frequent words
-# part of code is taken from https://quanteda.io/reference/textstat_frequency.html
-ggplot(comments_ngram_combined_freq[1:10, ], aes(x = reorder(feature, frequency), y = frequency)) +
-    geom_point() +
-    coord_flip() +
-    labs(x = NULL, y = "Frequency")
-```
+<!-- What's the point in properly cleaning the data when we do not use it for the sentiment analysis? In the previous version, both sentiment analyses used the textCleaned column which contains comments that were only superficially cleaned. In the second approach, the comments were then cleaned again which, quite frankly, doesn't make any sense (I understand that his was done because of the sampling procedure, but it still calls into question why we did all the pre-processing). Also, the used dictionary did not account for negation bigrams and thus was unsuitable for our data. 
+
+Another issue I have with the previous version of this section is that heavily relied upon the lecture slides. As it was mentioned in class, we need to go beyond what's been shown in the course. Merely copying the slides just won't do it. Yes, we can take code from the lectures, but we should make adaptions and not use it as the sole point of reference for our code. -->
 
 
-```{r word-cloud of n-grams, fig.cap="Word Cloud of n-grams"}
-# print word cloud, code is adapted from Lecture 4 (Part 2)
-textplot_wordcloud(comments_ngram_combined, max_words=100, 
-    #regulate size of the smallest and largest words               
-    min_size = 1, max_size=4, 
-    # words will be plotted in decreasing freq
-    random_order=FALSE,
-    # colors will be assigned based on freq
-    random_color= FALSE, color=colors)
-```
-
-## Data Analysis
-
-### Sentiment Analysis
-
-dictionary-based sentiment analysis to quantify how most people felt about the video (i.e., positively or negatively)
+### Vader Package
 
 <!-- we need to do something with sample, maybe write a function where we do at least several sampling and then average the compound for each of them -->
 
-```{r sample data frame}
-#set seed to reproduce results
-set.seed(42)
-#sample 1000 comments to speed up the analysis
-sample_cleaned <- sample_n(cleaned, 1000)
-```
+<!-- I would use the vader package only for exploring the data. For a thorough analysis, we can use the dictionary approach which yields similar results to the vader package (average sentiments of 0.38 with the vader package vs 0.377 with the dictionary) and does not require us to take a sample. -->
 
-VADER is one of the best unsupervised methods of analysing social media texts, because it is 'specifically attuned to sentiments expressed in social media'. We will use the compound score metric for easy evaluation of sentiment of the comments, The compound score is calculated by summing the valence scores of each word in the lexicon, adjusted according to the rules, and then normalised to a value between -1 (the most extreme negative score) and +1 (the most extreme positive score).
+
+VADER is one of the best unsupervised methods of analysing social media texts, because it is 'specifically attuned to sentiments expressed in social media'. We will use the compound score metric for easy evaluation of sentiment of the comments. The compound score is calculated by summing the valence scores of each word in the lexicon, adjusted according to the rules, and then normalised to a value between -1 (the most extreme negative score) and +1 (the most extreme positive score).
 https://github.com/cjhutto/vaderSentiment
 
-```{r sentiment-analysis-vader, fig.cap="Histogram of compound score for sentiment analysis"}
-#vade_df function
-vader_results<-vader_df(sample_cleaned$textCleaned)
-mean_vader<-round(mean(vader_results$compound),2)
-median_vader<-round(median(vader_results$compound),2)
+sample of 1,000 to compare tool designed for social media data with general sentiment analysis package
 
-# following code is adapted from lecture 5
-#graphical representation of compound scores
-ggplot(vader_results, aes(compound)) +
-  geom_histogram(bins = 10) +
-  xlab("compound") +
-  ylab("frequency") +
-  theme_minimal() +
-  #add line for mean value
-  geom_vline(xintercept = c(mean_vader,median_vader), size = 1) +
-  #add text for mean value
-  geom_text(aes(label = paste0("Mean ", mean_vader, "; Median ", median_vader), 
-                x = mean_vader, y = 10))
+```{r vader}
+# set seed for reproducible results
+set.seed(42)
+
+# sample 1,000 comments to speed up the analysis
+sample_cleaned <- sample_n(og.comments, 1000)
+
+# get sentiments
+vader_results <- vader_df(sample_cleaned$textOriginal)
+
+# compute mean sentiment
+(mean_vader <- vader_results$compound %>% mean() %>% round(2))
 ```
 
-In the documentation https://github.com/cjhutto/vaderSentiment it is given that positive sentiment is when compound score >= 0.05. As we can see on \@ref(fig:sentiment-analysis-vader), the median and mean values of the compound scores for all comments are higher than 0.3, so we can assume that most of the comments are positive
 
-<!-- I changed the tokenization process to the version we did above -->
 
-```{r sentiment analysis dictionary}
-#following code is adapted from lecture 5
-#load dictionary with positive words and with negative words
-poswords = "https://cssbook.net/d/positive.txt"
-negwords = "https://cssbook.net/d/negative.txt"
-pos = scan(poswords, what="list")
-neg = scan(negwords, what="list")
-sentimentdict = dictionary(list(pos=pos, neg=neg))
+### Dictionary Approach
 
-dic_scores = corpus(sample_cleaned$textCleaned) %>% 
-  tokens() %>%
-  tokens_remove(stopwords(source = 'smart')) %>%
-  tokens_keep("^\\p{L}", valuetype = 'regex') %>%
-  tokens_keep(min_nchar = 3) %>% 
-  dfm() %>% 
-  #apply dictionary to dfm
-  dfm_lookup(sentimentdict) %>% 
-  convert(to = "data.frame") %>% 
-  mutate(sent = pos - neg)
+used dictionary accounts for negations
 
-mean_dic<-round(mean(dic_scores$sent),2)
-median_dic<-round(median(dic_scores$sent),2)
+data_dictionary_LSD2015 does not double count (i.e., if a word occurs more than once, it is only considered once) https://tutorials.quanteda.io/basic-operations/dfm/dfm_lookup/
 
-#graphical representation of compound scores
-ggplot(dic_scores, aes(sent)) +
-  geom_histogram(bins = 10) +
-  xlab("compound") +
-  ylab("frequency") +
-  theme_minimal() +
-  #add line for mean value
-  geom_vline(xintercept = c(mean_dic,median_dic), size = 1) +
-  #add text for mean value
-  geom_text(aes(label = paste0("Mean ", mean_dic, "; Median ", median_dic), 
-                x = mean_dic, y = 10))
+explain how dictionary works (i.e., 1 or -1 for each word)
+
+```{r dict sentiment}
+# code taken from https://www.uni-muenster.de/imperia/md/content/ifpol/grasp/2019-06-27_muenster.pdf
+
+toks_dict <- cleaned_comments %>% 
+  tokens_lookup(dictionary = data_dictionary_LSD2015)
+
+dfm_dict <- toks_dict %>% dfm()
+
+dict_output <- convert(dfm_dict, to = "data.frame")
+
+dict_output$sent_score <- log((dict_output$positive + 
+                                 dict_output$neg_negative + 0.5) / 
+                                (dict_output$negative +
+                                   dict_output$neg_positive+ 0.5))
+
+dict_output <- cbind(dict_output, docvars(cleaned_comments))
+
+head(dict_output)
 ```
 
-<!-- other examples:
-https://dgarcia-eu.github.io/SocialDataScience/3_Affect/035_UnsupervisedToolsR/UnsupervisedToolsR.html
--->
+```{r mean dict sentiment}
+(mean_dict <- mean(dict_output$sent_score))
+```
 
-### Sentiment Analysis with Weights
+average of all sentiment scores suggests that the overall sentiment was positive
 
-### Topic Modelling
+<!-- For some reason, I can't add a label to the plot. Every time I try, R gets stuck. The red line shows the average sentiment. -->
 
-<!-- What about low frequency words? For now, I would keep them, because they may be meaningful in the sentiment analysis. However, they are unlikely to be relevant in the topic model, so we might have to remove them then.-->
+```{r dict-plot, fig.cap = "Histogram of Sentiment Distribution"}
+# plot sentiment distribution
+dict_output %>%
+  ggplot(aes(y = ..density.., sent_score)) +
+  geom_histogram(bins = 20, colour = "black", fill = "white") +
+  geom_density(colour = "black") +
+  xlab("Sentiment Score of Dictionary Approach") +
+  ylab("Frequency") +
+  theme_minimal() +
+ # geom_vline(xintercept = 0, size = 0.5, colour = 'black') +
+  geom_vline(xintercept = mean_dict, size = 1, colour = 'red')
+```
 
-<!-- Instead of deleting low frequency words, we can apply tfidf and then to delete words or n-grams with low weights 
-good example: https://quanteda.io/articles/pkgdown/replication/qss.html
--->
 
-```{r build n-grams}
-# build bigrams from tokens after lemmatisation
-comments_ngram_tfidf <- comments_lemma %>% 
-  tokens_remove(my_stopwords) %>% 
-  tokens_ngrams(2, concatenator = " ") %>%
-  dfm() %>% 
-  dfm_tfidf(scheme_tf="prop", smoothing=1)
+In the documentation https://github.com/cjhutto/vaderSentiment it is given that positive sentiment is when compound score >= 0.05. As we can see on \@ref(fig:dict-plot), the mean value of the sentiment score for all comments is higher than 0.3, so we can assume that most of the comments are positive
+
+mean of vader scores on 1,000 sampled comments: 0.38
+
+
+
+<!-- other examples [of sentiment analysis]:
+https://dgarcia-eu.github.io/SocialDataScience/3_Affect/035_UnsupervisedToolsR/UnsupervisedToolsR.html -->
+
+
+## Sentiment Analysis with Weights
+
+```{r weights}
+# check if uncleaned data and cleaned data have the same number of comments
+nrow(og.comments) == nrow(dfm_dict)
+
+# increment like count by one to avoid dropping unliked comments
+weights = og.comments$likeCount + 1
+
+# apply weights to sentiment scores of dictionary approach
+dfm_dict_weighted <- dfm_dict * weights
+
+head(dfm_dict_weighted)
+```
+
+
+```{r mean dict sentiment weight}
+# carry out same procedures as with unweighted data
+dict_output_weighted <- convert(dfm_dict_weighted, to = "data.frame")
+
+dict_output_weighted$sent_score <- log((dict_output_weighted$positive + 
+                                 dict_output_weighted$neg_negative + 0.5) / 
+                                (dict_output_weighted$negative +
+                                   dict_output_weighted$neg_positive+ 0.5))
+
+dict_output_weighted <- cbind(dict_output_weighted, docvars(cleaned_comments))
+
+(mean_dict_weighted <- mean(dict_output_weighted$sent_score))
+```
+
+sentiment is even more positive than without the weights (0.46)
+
+## Topic Modelling
+
+"we keep only the top 5% of the most frequent features (min_termfreq = 0.8) that appear in less than 10% of all documents (max_docfreq = 0.1) using dfm_trim() to focus on common but distinguishing features." <!-- I still need to paraphrase this -->
+
+we prepare the cleaned comments for the topic modelling process
+
+```{r topic model preparation}
+# code adapted from https://tutorials.quanteda.io/machine-learning/topicmodel/
+
+# create document-feature matrix
+comments_dfm <- cleaned_comments %>% dfm()
+
+# get vocabulary size before removing frequency words
+cat("Vocabulary size before removing frequency words:", ncol(comments_dfm))
+
+# remove frequency words
+comments_dfm_trim <- comments_dfm %>% 
+  dfm_trim(min_termfreq = 0.8, termfreq_type = "quantile",
+                       max_docfreq = 0.1, docfreq_type = "prop")
+
+# remove empty rows
+no_empty <- comments_dfm_trim %>% dfm_keep() %>% dfm_subset(ntoken(.) > 0)
+
+# get vocabulary size after removing frequency words
+cat("Vocabulary size after removing frequency words:", ncol(no_empty))
+```
+
+compute different metrics to determine the optimal number of topics
+
+<!-- I do not recommend running the chunk below as that takes about 15 minutes. To view the results, you can import the RData file to which I saved the output. -->
+
+```{r topic number, eval = F}
+# code adapted from https://content-analysis-with-r.com/6-topic_models.html
+
+# compute metrics for different number of topics
+lda_topics <- FindTopicsNumber(no_empty, 
+                                      topics = seq(from = 2, to = 15, by = 1), 
+                                      metrics = c("Griffiths2004", "CaoJuan2009", 
+                                                  "Arun2010", "Deveaud2014"), 
+                                      method = "Gibbs", 
+                                      control = list(seed = 77), 
+                                      mc.cores = 2L, 
+                                      verbose = TRUE)
+
+save(lda_topics, file = 'ldatuning_topic_numbers.Rdata')
+```
+
+
+```{r topic-numbers-plot, fig.cap = "Metrics for Determining the Optimal Number of Topics"}
+# import saved metrics
+load("ldatuning_topic_numbers.RData")
+
+# plot metrics
+FindTopicsNumber_plot(lda_topics)
+```
+
+Figure \@ref(fig:topic-numbers-plot) suggests that three topics are a good choice for our data; however, we also need to manually verify this. Do three topics make sense semantically? Are they coherent?
+
+
+
+
+<!-- Once we have decided on k and a package for building the topic model, we can use the following code to visualise the results-->
+
+```{r plot-topic-model, fig.cap = "Keyword Probabilities per Topic", eval = F}
+# code adapted from https://www.tidytextmining.com/topicmodeling.html and https://juliasilge.com/blog/sherlock-holmes-stm/
+
+# get probabilities of each word for each topic
+lda_matrix <- tidy(lda, matrix = "beta")
+
+# get top 10 terms per topic
+lda_top_terms <- lda_matrix %>%
+  group_by(topic) %>%
+  slice_max(beta, n = 10) %>% 
+  ungroup() %>%
+  arrange(topic, -beta)
+
+# plot word probablities
+lda_top_terms %>%
+  mutate(term = reorder_within(term, beta, topic)) %>%
+  ggplot(aes(beta, term, fill = factor(topic))) +
+  geom_col(alpha = 0.8, show.legend = FALSE, width = 0.5) +
+  facet_wrap(~ topic, scales = "free", labeller = labeller(topic = 
+    c("1" = "Topic 1",
+      "2" = "Topic 2"))) +
+  theme_minimal() + 
+  scale_y_reordered() +
+  labs(x = expression(beta),
+       y = "") +
+  theme(panel.spacing = unit(0.4, "lines"),
+        panel.border = element_rect(color = "black", fill = NA, size = 0.4),
+        strip.text = element_text(size = 11),
+        plot.title = element_text(hjust = 0))
+
 ```
 
 
@@ -579,9 +667,14 @@ If we decide to use word2vec, we should self-train our own model since pre-train
 Even self-trained models on Wikipedia and social media data are seemingly homophobic \citep{Papakyriakopoulos2020}, so maybe we shouldn't include them and justify this decision with this paper? --> 
 
 
-## Robustness Checks
+# Robustness Checks
+
+manually cross-check a certain number of comments and their classification; randomly sample 100 comments and then manually cross-check the results of the sentiment analysis; this should be done by at least two people, so we can calculate the intercoder reliability
 
 # Results and Discussion
+
+search for research articles on coming out videos on youtube
+
 
 # Limitations
 
@@ -591,7 +684,9 @@ did not take emojis into account (merely focussed on raw text)
 
 only considered parent comments
 
-ambiguity of words, for example, 'love' (In the context of this study, love is a central term. However, it is also likely to be associated with a positive sentiment. In a comment to a video about aromanitcism, the term may be used to refer to the content of the video, not to express an opinion/sentiment)
+ambiguity of words, for example, the term 'love' has different meanings depending on whether it is used as a verb or a noun. If used as a verb, it likely expresses a sentiment (e.g., 'I love your video'). If used as a noun, it probably refers to the content of the video (e.g., 'love is all around'\footnote{In the given example 'love is all around', it could be argued that the statement contains a negative sentiment, because the statement suggests that everyone experiences love when this is not necessarily the case. However, such fine-grained analysis lies far beyond the scope of this report and thus was not taken into account in our analysis.}).
+
+speech embeddings/word2vec and part-of-speech tagging were not used
 
 # Conclusion
 
