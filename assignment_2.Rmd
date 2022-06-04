@@ -98,7 +98,6 @@ cutoff = 80
 opts_chunk$set(tidy.opts = list(width.cutoff = cutoff), tidy = TRUE)
 usage(head, width = cutoff)
 
-
 ```
 
 
@@ -108,42 +107,25 @@ In March of this year, the Youtube channel \citet{JaidenAnimationsVideo} uploade
 
 # Methodological Design
 
-To address our research aims, we use a combination of web scraping, sentiment analysis and topic modelling. The first step in this process is to scrape the comments via the Youtube API after which we clean and explore the data. For this, we use a range of methods, namely subsetting, noise removal, negation bigrams, stopword removal, collocations, lemmatisation and the removal of high frequency words. After that, we conduct a dictionary-based sentiment analysis to quantify how the majority of viewers felt about the video (i.e., positively or negatively). This process consists of two steps: First, we carry out a sentiment analysis with the cleaned comments. Second, we account for any differences in the comments' popularity by weighting each comment according to their number of likes. The sentiment analysis is then re-run to investigate whether the weighting yields any different results. In the final step, we build a topic model to explore the key themes in the comments.
+To address our research aims, we use a combination of web scraping, sentiment analysis and topic modelling. We start our project by scraping the comments via the Youtube API. We then clean and explore the data. For this, we use a range of methods, namely subsetting, noise removal, negation bigrams, stopword removal, collocations, lemmatisation and the removal of high frequency words. After that, we conduct a dictionary-based sentiment analysis to quantify how the majority of viewers felt about the video (i.e., positively or negatively). This process consists of two steps: First, we carry out a sentiment analysis with the cleaned comments. Second, we account for any differences in the comments' popularity by weighting each comment according to their like number. Finally, to explore the key themes in the comments, we employ topic modelling.
 
 # Data Collection
 
 <!-- A general note on visualisations: We don't have to include plots for absolutely everything. One word cloud is enough for the report. So is one histogram for the sentiment analysis. I'd rather have fewer but well-designed and meaningful figures than plenty of messy and redundant ones. -->
 
-Before starting our analysis, we load all required packages in RStudio. 
-
-```{r packages, message=F}
-# load packages
-library(tidyverse)
-library(RColorBrewer)
-library(tuber)
-library(quanteda) 
-library(quanteda.textstats)
-library(quanteda.textplots)
-library(stopwords)
-library(lexicon)
-library(Matrix)
-library(vader)
-library(ldatuning)
-library(tidytext)
-```
-
-Subsequent to setting up our R session, we turn to the data collection. In R, there are two packages for scraping Youtube comments: `vosonSML` and `tuber`. To decide which package to settle with, we retrieve the comments using both tools and compare the obtained results. At the time of data collection, that is, the 16th May 2022, \cites{JaidenAnimationsVideo} video had 231,866 comments. When scraping the comments, we receive the following data:
+In R, there are two packages for scraping Youtube comments: `vosonSML` and `tuber`. To decide which package to settle with, we retrieve the comments with both tools and compare the obtained results. At the time of data collection, that is, the 16th May 2022, \cites{JaidenAnimationsVideo} video has 231,866 comments. When scraping the comments, we receive the following data:
 
 \begin{itemize}
   \item \emph{vosonSML}: 151,884 scraped comments
   \item \emph{tuber}: 180,743 scraped comments
 \end{itemize}
 
-For comparability purposes, we also use \cites{RiederTools} web tool to extract the comments which resulted in 218,848 observations. What is striking about these results is that none of the tested packages and tools are able to extract all Youtube comments. Since we conduct our analysis in R, we opt for the `tuber` package as it parses about 30,000 comments more than the `vosonSML` package and has a better documentation of issues regarding the number of returned comments \citep[see e.g.,][]{IssuesTuber}. The exact code we used to collect our data on the 16th May 2022 is shown below.
+For comparability purposes, we also use \cites{RiederTools} web tool to extract the comments which results in 218,848 observations. What is striking about these results is that none of the tested packages and tools are able to extract all Youtube comments. Since we conduct our analysis in R, we opt for the `tuber` package as it parses about 30,000 comments more than the `vosonSML` package and is more transparent regarding issues with the number of returned comments \citep[see e.g.,][]{IssuesTuber}. The exact code we used to collect our data on the 16th May 2022 is shown below.
 
 ```{r tuber, eval = F}
 # authenticate Youtube API
 # (for security reasons, our personal APP_ID and APP_SECRET are not included in this script)
+library(tuber)
 yt_oauth("APP_ID", "APP_SECRET", token = '')
 
 # get statistics about the video
@@ -159,24 +141,40 @@ write_csv(comments, "being_not_straight_16_may_22_tuber.csv")
 
 # Data Wrangling
 
-Upon collecting the comments and saving them to a csv file, we import them in RStudio.
+Before starting the data cleaning process, we load all required packages in RStudio. 
+
+```{r packages, message=F}
+# load packages
+library(tidyverse)
+library(RColorBrewer)
+library(quanteda) 
+library(quanteda.textstats)
+library(quanteda.textplots)
+library(stopwords)
+library(lexicon)
+library(Matrix)
+library(vader)
+library(ldatuning)
+library(tidytext)
+```
+
+Subsequent to setting up our R session, we import the collected comments.
 
 ```{r data import}
 # import data
 comments <- read.csv(unzip("being_not_straight_16_may_22_tuber.csv.zip","being_not_straight_16_may_22_tuber.csv"), header = T)
 ```
 
+## Preliminary Cleaning
 
-## Data Frame Cleaning
-
-To get to know our data, we inspect the variables in the data set.
+To get to know our data, we inspect the variable names.
 
 ```{r variable names}
 # get variable names
 print(names(comments))
 ```
 
-We then follow \cites{YoutubeGenderSentiment} suggestion to remove any comments written by the content creator before embarking on the data analysis.
+We then follow \cites{YoutubeGenderSentiment} suggestion to remove any comments written by the content creator prior to conducting any analysis.
 
 ```{r remove creator comment}
 # remove comments posted by Jaiden Animations
@@ -199,7 +197,7 @@ After that, we examine the values of the the variable \emph{moderationStatus}. T
 comments %>% count(moderationStatus)
 ```
 
-Given that there are no valid values for the variable \emph{moderationStatus}, we will drop this column when subsetting our data frame.
+Given that the variable \emph{moderationStatus} contains no useful information in our case, we will drop this column when subsetting our data frame.
 
 As we have seen above when inspecting the variable names, our data set includes 15 variables, a description of which can be found in the official \citet{YoutubeDocumentation} documentation. In our analysis, we will focus on the following four properties of the video:
 
@@ -217,7 +215,7 @@ The decision to proceed with the variable \emph{textOriginal} rather than \emph{
 comments.cut <- comments %>% select(c(id, textOriginal, likeCount, ThreadComment))
 ```
 
-Subsequently, we filter the comments by their thread status. By only retaining parent comments, the comments that were not scraped by the `tuber` package --- which, according to \citet{IssuesTuber} and \citet{IssuesNestedComments} are likely comment replies in nested comments --- do not affect our research.
+Subsequent to the removal of all irrelevant columns, we filter the comments by their thread status. By only retaining parent comments, the comments that were not scraped by the `tuber` package --- which, according to \citet{IssuesTuber} and \citet{IssuesNestedComments} are likely replies in nested comments --- do not affect our research.
 
 ```{r separate data frame in parent-reply}
 # filter parent comments
@@ -247,8 +245,10 @@ n <- dim(og.comments)[1]
 cat("Share of parent comments with hashtags:", round(hashtags.n/n,3), 
     "\nShare of parent comments with urls:", round(urls.n/n,3), 
     "\nShare of parent comments with taggings:", round(mentions.n/n,3),
-    "\nShare of parent comments with non-English words:", round(nonengl.n/n,3))
+    "\nShare of parent comments with non-ASCII characters:", round(nonengl.n/n,3))
 ```
+
+As we can see in the output, the proportion of hashtags, urls and taggings is only marginal, yet non-ASCII characters seem to make up about a fourth of our data. We will remove all special characters in the following step when removing most of the noise in the comments.
 
 ## Noise Removal and Tokenisation
 
@@ -280,7 +280,7 @@ comments_token <- corpus(og.comments$textOriginal) %>%
 
 Instead, it would be better to be more selective when using bigrams (e.g., by focussing on negative bigrams that add value when doing the sentiment analysis and collocations) (see https://tutorials.quanteda.io/basic-operations/tokens/tokens_ngrams/). The following chunks do just that. -->
 
-To account for negations, we generate negation bigrams (i.e., bigrams that start with a negation word). We then replace the individual two words of the negation bigram by the negation bigram. The code for this procedure is adapted from \citep{QuantedaNGrams}.
+To account for negations, we generate negation bigrams (i.e., bigrams that start with a negation word). We then replace the individual two words of the negation bigram by the negation bigram (e.g., 'not' and 'good' are replaced by 'not_good'). The code for this procedure is adapted from \citet{QuantedaNGrams}.
 
 ```{r negation bigrams}
 # prepare negation words
@@ -298,7 +298,7 @@ toks_neg_bigram[["text2"]]
 
 <!-- resource for stopwords (and data cleaning in general): https://smltar.com/stopwords.html -->
 
-Now that we have accounted for negation words, we can remove them along with other stopwords. For this, we use the 'smart' dictionary, as the 'en' dictionary is somewhat inconsistent: Whilst 'can't' and 'cannot' are removed, its counterpart 'can' is not which would lead to skewed results. Again, we use the padding statement to remember the initial position of each word in a comment.
+Now that we have accounted for negation words, we can remove them along with other stopwords. For this, we use the 'smart' dictionary because there are inconsistencies with other popular dictionaries. For example, whilst 'can't' and 'cannot' are removed with the 'en' dictionary, its counterpart 'can' is not which would lead to skewed results. Again, we use the padding statement to remember the initial position of each word in a comment.
 
 ```{r stopwords}
 # select dictionary
@@ -315,11 +315,9 @@ no_stopw[["text2"]]
 
 ## Collocations
 
-We next check for the most common collocations (i.e., n-grams that occur more often than by chance). As part of this procedure, we set the minimum number of occurrences to 10 and limit the n-grams to bigrams. Moreover, because we consistently used the padding statement, the function will only generate a bigram when two words were adjacent in the original comment. We follow the example of \citet{QuantedaCompound} in our code.
+We next check for the most common collocations (i.e., n-grams that occur more often than by chance). As part of this procedure, we set the minimum number of occurrences to 10 and limit the n-grams to bigrams. Due to out consistent usage of the padding statement, the function will only generate a bigram when two words were adjacent in the original comment. Our code follows the example given by \citet{QuantedaCompound}.
 
 ```{r collocations}
-# code adapted from https://tutorials.quanteda.io/advanced-operations/compound-mutiword-expressions/
-
 # remove non-words
 toks_comments_cap <- no_stopw %>%
   tokens_select(pattern = "^[A-Z]",
@@ -335,7 +333,7 @@ tstat_col_com <- toks_comments_cap %>%
 tstat_col_com %>% head(20) %>% as.data.frame() %>% select(c(collocation, count, z))
 ```
 
-Once we have identified the collocations, we add the collocations with a z score of greater than 50 to our data. A similar procedure as with the negation bigrams is used for this (e.g., two individual words of a collocation are replaced by the collocation). In our code implementation, we draw upon \cites{Lecture4Part2} lecture slides.
+Once we have identified the collocations, we add those with a z score greater than 50 to our data. For this, a similar procedure as for the negation bigrams is used (e.g., two individual words of a collocation are replaced by the collocation). In our code implementation, we draw upon \cites{Lecture4Part2} lecture slides.
 
 ```{r replace collocations}
 # filter collocations
@@ -378,7 +376,7 @@ comments_freq <- comments_lemma %>%
   textstat_frequency()
 ```
 
-Next, we visualise the word frequencies. The code for the following plot is adapted from \citet{FreqPlot}.
+Next, we visualise the word frequencies. The code for this plot is adapted from \citet{FreqPlot}.
 
 ```{r plot-frequency, fig.cap = "Word Distribution Frequencies", out.height = "70%"} 
 # plot cumulative distribution frequency (CDF)
@@ -422,7 +420,7 @@ cleaned_comments <- comments_lemma %>%
 head(cleaned_comments)
 ```
 
-Lastly, we visualise the word frequencies of the cleaned comments. This takes the form of a word cloud and is shown in Figure \@ref(fig:word-cloud). The code for this was taken from \cites{Lecture4Part2} lecture slides.
+Lastly, we visualise the word frequencies of the cleaned comments. This takes the form of a word cloud and is shown in Figure \@ref(fig:word-cloud). The code for this is taken from \cites{Lecture4Part2} lecture slides.
 
 ```{r word-cloud, fig.cap = "Word Cloud of Cleaned Comments"}
 # generate word cloud
@@ -433,29 +431,27 @@ cleaned_comments %>% dfm() %>%
                    min_size = 1, max_size = 4,
                    random_color = FALSE)
 ```
-Based on the word cloud, the comments seem to be rather positive. Among the prevalent words are the terms 'love', 'happy', 'good', 'cool', 'glad', 'nice', 'great', 'awesome', which suggest that the viewership reacted positively. However, these preliminary findings must be approach with caution since they stem from merely a descriptive analysis.
+Based on the word cloud, the comments seem to be rather positive. Among the most prevalent words are the terms 'love', 'happy', 'good', 'cool', 'glad', 'nice', 'great' and 'awesome', which suggest that the viewership reacted positively. However, these preliminary findings must be approached with caution since they merely stem from a descriptive analysis.
 
 # Data Analysis
 
+Now that we have cleaned the comments, we can embark on the analysis. This process consists of three steps: 1) unweighted sentiment analysis, 2) weighted sentiment analysis, and 3) topic modelling.
 
-## Sentiment Analysis
+## Unweighted Sentiment Analysis
 
 <!-- What's the point in properly cleaning the data when we do not use it for the sentiment analysis? In the previous version, both sentiment analyses used the textCleaned column which contains comments that were only superficially cleaned. In the second approach, the comments were then cleaned again which, quite frankly, doesn't make any sense (I understand that his was done because of the sampling procedure, but it still calls into question why we did all the pre-processing). Also, the used dictionary did not account for negation bigrams and thus was unsuitable for our data. 
 
 Another issue I have with the previous version of this section is that heavily relied upon the lecture slides. As it was mentioned in class, we need to go beyond what's been shown in the course. Merely copying the slides just won't do it. Yes, we can take code from the lectures, but we should make adaptions and not use it as the sole point of reference for our code. -->
 
-
-### Vader Package
+We start our analysis with an unweighted sentiment analysis. For this method, we use two different approaches: First, we use the `vader` package, a tool specifically designed for sentiment analyses on social media data. As this package requires quite some computational power and time, we will use a random sample of 1,000 comments for this procedure. Second, we use the code underpinning the `quanteda.sentiment` package to conduct a dictionary-based sentiment analysis on the entire data set. We then compare the results of both approaches to see whether the all-purpose dictionary is suitable for our data.
 
 <!-- we need to do something with sample, maybe write a function where we do at least several sampling and then average the compound for each of them -->
 
 <!-- I would use the vader package only for exploring the data. For a thorough analysis, we can use the dictionary approach which yields similar results to the vader package (average sentiments of 0.38 with the vader package vs 0.377 with the dictionary) and does not require us to take a sample. -->
 
 
-VADER is one of the best unsupervised methods of analysing social media texts, because it is 'specifically attuned to sentiments expressed in social media'. We will use the compound score metric for easy evaluation of sentiment of the comments. The compound score is calculated by summing the valence scores of each word in the lexicon, adjusted according to the rules, and then normalised to a value between -1 (the most extreme negative score) and +1 (the most extreme positive score).
-https://github.com/cjhutto/vaderSentiment
+To ensure our results are reproducible, we use the set seed function. We then randomly sample 1,000 comments from our data set. As the `vader` package is applied to textual and not tokenised data, we use the uncleaned column \emph{textOriginal} for the analysis. Upon obtaining the results from the `vader` package, we calculate the average sentiment across all comments.
 
-sample of 1,000 to compare tool designed for social media data with general sentiment analysis package
 
 ```{r vader}
 # set seed for reproducible results
@@ -471,69 +467,63 @@ vader_results <- vader_df(sample_cleaned$textOriginal)
 (mean_vader <- vader_results$compound %>% mean() %>% round(2))
 ```
 
+Before interpreting the obtained result, we want to give a brief description of the underlying workings of the used package. According to the official documentation \citep[see][]{VaderGit}, each word in the analysed text is assigned a number, a so called \emph{valence score}, which is recorded in a dictionary. To determine a text's sentiment, all valence scores are summed and normalised. The resulting \emph{compound score} is a number between -1 (very negative) and 1 (very positive). The package creators suggest that if a compound score is equal to or greater than 0.05, the analysed text has a positive sentiment. Texts with a compound score lower than 0.05 but greater than -0.05 are said to have a neutral sentiment. A compound score lower than or equal to -0.05 indicates a negative sentiment. Based on our average compound score of 0.38 --- which is significantly above the suggested threshold of 0.05 --- it is fair to say that the overall sentiment in the comment section appears to be positive. 
 
-
-### Dictionary Approach
-
-used dictionary accounts for negations
-
-data_dictionary_LSD2015 does not double count (i.e., if a word occurs more than once, it is only considered once) https://tutorials.quanteda.io/basic-operations/dfm/dfm_lookup/
-
-explain how dictionary works (i.e., 1 or -1 for each word)
+To verify this finding, we carry out a dictionary-based sentiment analysis. For this, we use the underlying workings of the `quanteda.sentiment` packages as described by \citet{Benoit2019} and \citet{Benoit2021}. We also use the \emph{data\_dictionary\_LSD2015} dictionary which has the clear advantage of including negations. This means that our analysis will account for our negation bigrams and recognise that terms such as 'not good' have a negative sentiment. The procedure is applied to the cleaned tokenised comments after which we calculate the mean of the obtained sentiments scores. The code is taken from \citet{Benoit2019}.
 
 ```{r dict sentiment}
-# code taken from https://www.uni-muenster.de/imperia/md/content/ifpol/grasp/2019-06-27_muenster.pdf
-
+# apply dictionary 
 toks_dict <- cleaned_comments %>% 
   tokens_lookup(dictionary = data_dictionary_LSD2015)
 
+# document-feature matrix
 dfm_dict <- toks_dict %>% dfm()
 
+# convert to data frame
 dict_output <- convert(dfm_dict, to = "data.frame")
 
+# compute sentiment for each comment
 dict_output$sent_score <- log((dict_output$positive + 
                                  dict_output$neg_negative + 0.5) / 
                                 (dict_output$negative +
-                                   dict_output$neg_positive+ 0.5))
-
+                                   dict_output$neg_positive + 0.5))
 dict_output <- cbind(dict_output, docvars(cleaned_comments))
 
+# show results
 head(dict_output)
 ```
 
 ```{r mean dict sentiment}
+# compute mean sentiment
 (mean_dict <- mean(dict_output$sent_score))
 ```
 
-average of all sentiment scores suggests that the overall sentiment was positive
+Akin to the previous section, we want to briefly outline how the final sentiment score is computed before making any interpretations. Whilst the official documentation does not provide any details about the sentiment calculation, \cites{Benoit2019} presentation provides insights into the workings of the package. According to his slides, the number of positive, negative, negative_positive (e.g., 'not good') and negative_negative (e.g., 'not dumb') words are counted per comment. The number of positive comments (i.e, the sum of the number of positive and negative_negative comments) is then divided by the number of negative comments (i.e., the sum of the number of negative and negative_positive comments). As part of this procedure, a constant is added to both denominator and numerator so as to avoid dividing by zero. Finally, the log is taken of the result to mean center the sentiment scores.
+
+As the dictionay-based sentiment scores are not normalised to be between -1 and 1, the results are scaled somewhat differently than the ones given by the `vader` package. Nonetheless, a global sentiment score of 0.37 still suggests that the overall sentiment of the comments is positive.
+
+We next plot the results of the dictionary-based sentiment analysis.
 
 <!-- For some reason, I can't add a label to the plot. Every time I try, R gets stuck. The red line shows the average sentiment. -->
 
 ```{r dict-plot, fig.cap = "Histogram of Sentiment Distribution"}
 # plot sentiment distribution
 dict_output %>%
-  ggplot(aes(y = ..density.., sent_score)) +
+  ggplot(aes(sent_score)) +
   geom_histogram(bins = 20, colour = "black", fill = "white") +
   geom_density(colour = "black") +
   xlab("Sentiment Score of Dictionary Approach") +
   ylab("Frequency") +
   theme_minimal() +
- # geom_vline(xintercept = 0, size = 0.5, colour = 'black') +
   geom_vline(xintercept = mean_dict, size = 1, colour = 'red')
 ```
+Looking at Figure \@ref(fig:dict-plot), we find that the average sentiment (red line) is greater than zero. We can further see that many comments are clustered around the zero mark, suggesting that many comments are neutral. 
 
+As we have obtained similar results with both approaches, we will move forward with the dictionary-based sentiment analysis. The main reason for this decision is the substantial difference in execution time between both procedures. 
 
-In the documentation https://github.com/cjhutto/vaderSentiment it is given that positive sentiment is when compound score >= 0.05. As we can see on \@ref(fig:dict-plot), the mean value of the sentiment score for all comments is higher than 0.3, so we can assume that most of the comments are positive
+## Weighted Sentiment Analysis
 
-mean of vader scores on 1,000 sampled comments: 0.38
-
-
-
-<!-- other examples [of sentiment analysis]:
-https://dgarcia-eu.github.io/SocialDataScience/3_Affect/035_UnsupervisedToolsR/UnsupervisedToolsR.html -->
-
-
-## Sentiment Analysis with Weights
+In the next step, we will account for the number of likes of each comment. For this, we first confirm that the document-feature matrix includes the same number of observations as the data frame containing the like data. We then increment the like count by one to account for the author of a comment and multiply the result with the document-feature matrix.
 
 ```{r weights}
 # check if uncleaned data and cleaned data have the same number of comments
@@ -548,6 +538,7 @@ dfm_dict_weighted <- dfm_dict * weights
 head(dfm_dict_weighted)
 ```
 
+Using the weighted document-feature matrix, we execute the same steps as above when computing the unweighted sentiment scores.
 
 ```{r mean dict sentiment weight}
 # carry out same procedures as with unweighted data
@@ -557,13 +548,12 @@ dict_output_weighted$sent_score <- log((dict_output_weighted$positive +
                                  dict_output_weighted$neg_negative + 0.5) / 
                                 (dict_output_weighted$negative +
                                    dict_output_weighted$neg_positive+ 0.5))
-
 dict_output_weighted <- cbind(dict_output_weighted, docvars(cleaned_comments))
 
 (mean_dict_weighted <- mean(dict_output_weighted$sent_score))
 ```
 
-sentiment is even more positive than without the weights (0.46)
+As we can see, the weighted average sentiment score is greater than the unweighted average sentiment score. This suggests that comments with a positive sentiment have received more likes than comments with a negative sentiment. The result further supports our previous observation that the sentiment in the comment section was largely positive.
 
 ## Topic Modelling
 
@@ -621,7 +611,7 @@ load("ldatuning_topic_numbers.RData")
 FindTopicsNumber_plot(lda_topics)
 ```
 
-Figure \@ref(fig:topic-numbers-plot) suggests that three topics are a good choice for our data; however, we also need to manually verify this. Do three topics make sense semantically? Are they coherent?
+Figure \@ref(fig:topic-numbers-plot) suggests that three topics are a good choice for our data; however, we also need to verify this manually. Do three topics make sense semantically? Are they coherent?
 
 
 
