@@ -612,8 +612,19 @@ FindTopicsNumber_plot(lda_topics)
 ```
 
 Figure \@ref(fig:topic-numbers-plot) suggests that three topics are a good choice for our data; however, we also need to verify this manually. Do three topics make sense semantically? Are they coherent?
+```{r:}
+#adapted from https://content-analysis-with-r.com/6-topic_models.html
+library(topicmodels) 
 
+n.topics <- 3
+dfm2topicmodels <- convert(no_empty, to = "topicmodels")
+lda.model <- LDA(dfm2topicmodels, n.topics)
+lda.model
+as.data.frame(terms(lda.model, 10))
 
+#there seems to be an overlap between the different topics, also I don't know if the semantice interpretion is easy, I (jade) don't really know how to solve it
+
+```
 
 
 <!-- Once we have decided on k and a package for building the topic model, we can use the following code to visualise the results-->
