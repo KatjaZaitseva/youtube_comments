@@ -156,6 +156,8 @@ library(Matrix)
 library(vader)
 library(ldatuning)
 library(tidytext)
+library(topicmodels) 
+library(seededlda)
 ```
 
 Subsequent to setting up our R session, we import the collected comments.
@@ -267,18 +269,9 @@ comments_token <- corpus(og.comments$textOriginal) %>%
   tokens_replace(contract, long)
 ```
 
-<!-- Because of the adapted code, empty rows cannot be removed with the code in the previous version. However, this is not a problem, because it actually makes sense to keep them in the data set to facilitate the weighting process later on in the script. I have removed all empty rows as part of the topic modelling processing further down. -->
-
-
 ## Negation Bigrams
 
-<!-- I appreciate that the part on n-grams probably took quite some time to code, but there are several issues with it.
-
-1) It doesn't make any sense to generate n-grams after the data wrangling. The whole point of n-grams is to capture adjacent words. Once the comments are cleaned, words that did not initially occur after one another may be put together in a bigram in which case the bigram would not accurately represent the text.
-
-2) Changing the order of the words in a bigram might change the the bigram's meaning. 
-
-Instead, it would be better to be more selective when using bigrams (e.g., by focussing on negative bigrams that add value when doing the sentiment analysis and collocations) (see https://tutorials.quanteda.io/basic-operations/tokens/tokens_ngrams/). The following chunks do just that. -->
+<!-- https://tutorials.quanteda.io/basic-operations/tokens/tokens_ngrams/ -->
 
 To account for negations, we generate negation bigrams (i.e., bigrams that start with a negation word). We then replace the individual two words of the negation bigram by the negation bigram (e.g., 'not' and 'good' are replaced by 'not_good'). The code for this procedure is adapted from \citet{QuantedaNGrams}.
 
@@ -362,8 +355,6 @@ comments_lemma <- coll %>%
 comments_lemma[["text2"]]
 ```
 
-<!-- I removed the heading 'Data Exploration', because the subsection 'High Frequency Words' still belongs to the section 'Data Wrangling'. Obviously, this does not mean that we can't include plots and tables. We just don't need a designated heading for that. -->
-
 ## High Frequency Words
 
 The last step of our data cleaning process revolves around the removal of high frequency words. Low frequency words are not removed at this stage as they may be valuable for the sentiment analysis. Before removing any tokens, we calculate a frequency statistic.
@@ -439,16 +430,7 @@ Now that we have cleaned the comments, we can embark on the analysis. This proce
 
 ## Unweighted Sentiment Analysis
 
-<!-- What's the point in properly cleaning the data when we do not use it for the sentiment analysis? In the previous version, both sentiment analyses used the textCleaned column which contains comments that were only superficially cleaned. In the second approach, the comments were then cleaned again which, quite frankly, doesn't make any sense (I understand that his was done because of the sampling procedure, but it still calls into question why we did all the pre-processing). Also, the used dictionary did not account for negation bigrams and thus was unsuitable for our data. 
-
-Another issue I have with the previous version of this section is that heavily relied upon the lecture slides. As it was mentioned in class, we need to go beyond what's been shown in the course. Merely copying the slides just won't do it. Yes, we can take code from the lectures, but we should make adaptions and not use it as the sole point of reference for our code. -->
-
 We start our analysis with an unweighted sentiment analysis. For this method, we use two different approaches: First, we use the `vader` package, a tool specifically designed for sentiment analyses on social media data. As this package requires quite some computational power and time, we will use a random sample of 1,000 comments for this procedure. Second, we use the code underpinning the `quanteda.sentiment` package to conduct a dictionary-based sentiment analysis on the entire data set. We then compare the results of both approaches to see whether the all-purpose dictionary is suitable for our data.
-
-<!-- we need to do something with sample, maybe write a function where we do at least several sampling and then average the compound for each of them -->
-
-<!-- I would use the vader package only for exploring the data. For a thorough analysis, we can use the dictionary approach which yields similar results to the vader package (average sentiments of 0.38 with the vader package vs 0.377 with the dictionary) and does not require us to take a sample. -->
-
 
 To ensure our results are reproducible, we use the set seed function. We then randomly sample 1,000 comments from our data set. As the `vader` package is applied to textual and not tokenised data, we use the uncleaned column \emph{textOriginal} for the analysis. Upon obtaining the results from the `vader` package, we calculate the average sentiment across all comments.
 
@@ -464,7 +446,7 @@ sample_cleaned <- sample_n(og.comments, 1000)
 vader_results <- vader_df(sample_cleaned$textOriginal)
 
 # compute mean sentiment
-(mean_vader <- vader_results$compound %>% mean() %>% round(2))
+(mean_vader <- vader_results$compound %>% mean(na.rm = TRUE) %>% round(2))
 ```
 
 Before interpreting the obtained result, we want to give a brief description of the underlying workings of the used package. According to the official documentation \citep[see][]{VaderGit}, each word in the analysed text is assigned a number, a so called \emph{valence score}, which is recorded in a dictionary. To determine a text's sentiment, all valence scores are summed and normalised. The resulting \emph{compound score} is a number between -1 (very negative) and 1 (very positive). The package creators suggest that if a compound score is equal to or greater than 0.05, the analysed text has a positive sentiment. Texts with a compound score lower than 0.05 but greater than -0.05 are said to have a neutral sentiment. A compound score lower than or equal to -0.05 indicates a negative sentiment. Based on our average compound score of 0.38 --- which is significantly above the suggested threshold of 0.05 --- it is fair to say that the overall sentiment in the comment section appears to be positive. 
@@ -495,16 +477,14 @@ head(dict_output)
 
 ```{r mean dict sentiment}
 # compute mean sentiment
-(mean_dict <- mean(dict_output$sent_score))
+(mean_dict <- round(mean(dict_output$sent_score),2))
 ```
 
 Akin to the previous section, we want to briefly outline how the final sentiment score is computed before making any interpretations. Whilst the official documentation does not provide any details about the sentiment calculation, \cites{Benoit2019} presentation provides insights into the workings of the package. According to his slides, the number of positive, negative, negative_positive (e.g., 'not good') and negative_negative (e.g., 'not dumb') words are counted per comment. The number of positive comments (i.e, the sum of the number of positive and negative_negative comments) is then divided by the number of negative comments (i.e., the sum of the number of negative and negative_positive comments). As part of this procedure, a constant is added to both denominator and numerator so as to avoid dividing by zero. Finally, the log is taken of the result to mean center the sentiment scores.
 
-As the dictionay-based sentiment scores are not normalised to be between -1 and 1, the results are scaled somewhat differently than the ones given by the `vader` package. Nonetheless, a global sentiment score of 0.37 still suggests that the overall sentiment of the comments is positive.
+As the dictionay-based sentiment scores are not normalised to be between -1 and 1, the results are scaled somewhat differently than the ones given by the `vader` package. Nonetheless, a global sentiment score of 0.38 still suggests that the overall sentiment of the comments is positive.
 
 We next plot the results of the dictionary-based sentiment analysis.
-
-<!-- For some reason, I can't add a label to the plot. Every time I try, R gets stuck. The red line shows the average sentiment. -->
 
 ```{r dict-plot, fig.cap = "Histogram of Sentiment Distribution"}
 # plot sentiment distribution
@@ -515,7 +495,8 @@ dict_output %>%
   xlab("Sentiment Score of Dictionary Approach") +
   ylab("Frequency") +
   theme_minimal() +
-  geom_vline(xintercept = mean_dict, size = 1, colour = 'red')
+  geom_vline(xintercept = mean_dict, size = 1, colour = 'red') + 
+  annotate(x=mean_dict, y=+Inf, label=paste0("Mean = ", mean_dict), vjust=2, geom="label")
 ```
 Looking at Figure \@ref(fig:dict-plot), we find that the average sentiment (red line) is greater than zero. We can further see that many comments are clustered around the zero mark, suggesting that many comments are neutral. 
 
@@ -557,9 +538,15 @@ As we can see, the weighted average sentiment score is greater than the unweight
 
 ## Topic Modelling
 
-"we keep only the top 5% of the most frequent features (min_termfreq = 0.8) that appear in less than 10% of all documents (max_docfreq = 0.1) using dfm_trim() to focus on common but distinguishing features." <!-- I still need to paraphrase this -->
+<!-- I didn't understand what are the 'common but distinguishing features', that's why I think it's better to simply delete words that are either too rare or too frequent, I tried min_docfreq = 0.075, max_docfreq = 0.90, docfreq_type = "prop" from https://api.rpubs.com/cbpuschmann/un-stm but only 1 word left then -->
 
-we prepare the cleaned comments for the topic modelling process
+<!-- there is better interpretation: https://quanteda.io/reference/dfm_trim.html -->
+
+In addition to how the audience perceived the video in terms of emotion, we are interested to know what topics were mostly discussed in the comments. This is done using an unsupervised method - topic models. This algorithm works with a document-feature matrix, where the rows in our case are the comments and the columns (features) are the words included in the comments. Accordingly, at the intersection of row i and column j will be 1, if the word is included in the comment. Before implementing the algorithm, we will clear our DFM of rarely used words - 'features'. To do this, we use the function dfm_trim to remove words that are rare (min_docfreq = 0.1, docfreq_type = "prop") and that appear too often (max_docfreq = 0.9, docfreq_type = "prop"). 
+
+<!-- "we keep only the top 5% of the most frequent features (min_termfreq = 0.8) that appear in less than 10% of all documents (max_docfreq = 0.1) using dfm_trim() to focus on common but distinguishing features." I still need to paraphrase this 
+
+we prepare the cleaned comments for the topic modelling process -->
 
 ```{r topic model preparation}
 # code adapted from https://tutorials.quanteda.io/machine-learning/topicmodel/
@@ -573,7 +560,7 @@ cat("Vocabulary size before removing frequency words:", ncol(comments_dfm))
 # remove frequency words
 comments_dfm_trim <- comments_dfm %>% 
   dfm_trim(min_termfreq = 0.8, termfreq_type = "quantile",
-                       max_docfreq = 0.1, docfreq_type = "prop")
+             max_docfreq = 0.1, docfreq_type = "prop")
 
 # remove empty rows
 no_empty <- comments_dfm_trim %>% dfm_keep() %>% dfm_subset(ntoken(.) > 0)
@@ -614,8 +601,6 @@ FindTopicsNumber_plot(lda_topics)
 Figure \@ref(fig:topic-numbers-plot) suggests that three topics are a good choice for our data; however, we also need to verify this manually. Do three topics make sense semantically? Are they coherent?
 ```{r:}
 #adapted from https://content-analysis-with-r.com/6-topic_models.html
-library(topicmodels) 
-
 n.topics <- 3
 dfm2topicmodels <- convert(no_empty, to = "topicmodels")
 lda.model <- LDA(dfm2topicmodels, n.topics)
