@@ -449,8 +449,6 @@ Before interpreting the obtained result, we want to give a brief description of 
 
 To verify this finding, we carry out a dictionary-based sentiment analysis. For this, we use the underlying workings of the `quanteda.sentiment` package as described by \citet{Benoit2019} and \citet{Benoit2021}. We also use the \emph{data\_dictionary\_LSD2015} dictionary which has the clear advantage of including negations. This means that our analysis will account for our negation bigrams and recognise that terms such as 'not good' have a negative sentiment. The procedure is applied to the cleaned tokenised comments. To determine the global sentiment of the comments, we calculate the mean of the obtained sentiments scores. The code for this is taken from \citet{Benoit2019}.
 
-<!-- I can't understand what this operation does: dict_output <- cbind(dict_output, docvars(cleaned_comments)) -->
-
 ```{r dict sentiment}
 # apply dictionary 
 toks_dict <- cleaned_comments %>% 
@@ -467,7 +465,6 @@ dict_output$sent_score <- log((dict_output$positive +
                                  dict_output$neg_negative + 0.5) / 
                                 (dict_output$negative +
                                    dict_output$neg_positive + 0.5))
-
 dict_output <- cbind(dict_output, docvars(cleaned_comments))
 
 # show results
@@ -495,31 +492,12 @@ dict_output %>%
   ylab("Frequency") +
   theme_minimal() +
   geom_vline(xintercept = mean_dict, size = 1, colour = 'red') +
-  ggplot2::annotate(geom = "label", x = mean_dict + 0.75, y = Inf, 
+  ggplot2::annotate(geom = "label", x = mean_dict + 0.9, y = Inf, 
                     label = paste0("Mean: ", mean_dict), vjust = 2, color = "red")
 ```
 Looking at Figure \@ref(fig:dict-plot), we find that the average sentiment (red line) is greater than zero. We can further see that many comments are clustered around the zero mark, suggesting that many comments are neutral. 
 
 As we have obtained similar results with both approaches, we will move forward with the dictionary-based sentiment analysis. The main reason for this decision is the substantial difference in execution time between both procedures. 
-
-## Validation of Unweighted Sentiment Analysis
-
-For testing how accurately the algorithm detects the sentiment of comments, we will randomly select 100 comments with a computed compound_score. Each of the researchers in this paper (3 in total) will read them separately and determine their score (positive, negative, neutral) without seeing the score given by model. After that, with calculated score by model we will then assign the category for each comment (positive, negative, neutral) according to the recommendations by \citep[see][]{VaderGit} and calculate the accuracy of our model (based on confusion matrix).
-
-<!-- Don't be afraid that doc_id has text10 and text100, it's because of automatic sorting by doc_id which is text, you can see by head(dict_output %>% arrange(doc_id))-->
-
-```{r select 100 comments randomly with sentiments}
-#merge comments and dfm matrix with sentiments
-dict_output_comments <- merge(x = dict_output, y = og.comments, 
-                              by = 0, all.x = TRUE)[,c("doc_id","textOriginal","sent_score")]
-
-# sample 100 comments
-sample_comments_sentiment <- sample_n(dict_output_comments, 100)
-
-#delete score and save to csv file
-sample_comments_sentiment_no_scores <- sample_comments_sentiment %>% select(c(doc_id, textOriginal))
-write.csv(sample_comments_sentiment_no_scores,"sample_comments_sentiment_no_scores.csv")
-```
 
 ## Weighted Sentiment Analysis
 
@@ -554,7 +532,6 @@ dict_output_weighted <- cbind(dict_output_weighted, docvars(cleaned_comments))
 ```
 
 As we can see, the weighted average sentiment score is greater than the unweighted average sentiment score. This suggests that comments with a positive sentiment have received more likes than comments with a negative sentiment. The result further supports our previous observation that the sentiment in the comment section was largely positive.
-
 
 ## Topic Modelling
 
@@ -639,7 +616,8 @@ for(i in 2:10) {
 }
 
 # save output to file
-save(topicmodels_2, topicmodels_3, topicmodels_4, topicmodels_5, topicmodels_6, topicmodels_7, topicmodels_8, topicmodels_9, topicmodels_10,
+save(topicmodels_2, topicmodels_3, topicmodels_4, topicmodels_5, topicmodels_6, 
+     topicmodels_7, topicmodels_8, topicmodels_9, topicmodels_10,
      file = 'topicmodels.Rdata')
 ```
 
@@ -659,11 +637,11 @@ three topics seem to be the most coherent, though there is some overlap between 
 
 <!-- We still need to replace the generic topic names (i.e, Topic 1, Topic 2 , Topic 3) with more meaningful names -->
 
-```{r plot-topic-model, fig.cap = "Keyword Probabilities per Topic"}
+```{r plot-topic-model, fig.cap = "Keyword Probabilities per Topic", out.width="80%"}
 # code adapted from https://www.tidytextmining.com/topicmodeling.html and https://juliasilge.com/blog/sherlock-holmes-stm/
 
 # get probabilities of each word for each topic
-lda_matrix <- tidy(topicmodels_3, matrix = "beta")
+lda_matrix <- tidy(topicmodels_4, matrix = "beta")
 
 # get top 10 terms per topic
 lda_top_terms <- lda_matrix %>%
@@ -678,9 +656,10 @@ lda_top_terms %>%
   ggplot(aes(beta, term, fill = factor(topic))) +
   geom_col(alpha = 0.8, show.legend = FALSE, width = 0.5) +
   facet_wrap(~ topic, scales = "free", labeller = labeller(topic = 
-    c("1" = "Topic 1",
-      "2" = "Topic 2",
-      "3" = "Topic 3"))) +
+    c("1" = "Personal Experience",
+      "2" = "Opinion",
+      "3" = "Romance & Sexuality",
+      "4" = "Support"))) +
   theme_minimal() + 
   scale_y_reordered() +
   labs(x = expression(beta),
@@ -691,6 +670,8 @@ lda_top_terms %>%
         plot.title = element_text(hjust = 0))
 
 ```
+
+
 
 
 # Robustness Checks
@@ -704,6 +685,26 @@ https://cssbook.net/chapter11.html
 https://www.tandfonline.com/doi/full/10.1080/19312458.2020.1869198
 
 
+
+For testing how accurately the algorithm detects the sentiment of comments, we will randomly select 100 comments with a computed compound_score. Each of the researchers in this paper (3 in total) will read them separately and determine their score (positive, negative, neutral) without seeing the score given by model. After that, with calculated score by model we will then assign the category for each comment (positive, negative, neutral) according to the recommendations by \citep[see][]{VaderGit} and calculate the accuracy of our model (based on confusion matrix).
+
+<!-- Don't be afraid that doc_id has text10 and text100, it's because of automatic sorting by doc_id which is text, you can see by head(dict_output %>% arrange(doc_id))-->
+
+```{r select 100 comments randomly with sentiments}
+# merge comments and dfm matrix with sentiments
+dict_output_comments <- merge(x = dict_output, y = og.comments, 
+                              by = 0, all.x = TRUE)[ ,c("doc_id","textOriginal","sent_score")]
+
+# sample 100 comments
+set.seed(42)
+sample_comments_sentiment <- sample_n(dict_output_comments, 100)
+
+# delete score and save to csv file
+sample_comments_sentiment_no_scores <- sample_comments_sentiment %>% 
+  select(c(doc_id, textOriginal))
+
+write.csv(sample_comments_sentiment_no_scores,"sample_sentiment_validation.csv")
+```
 
 
 # Results and Discussion
