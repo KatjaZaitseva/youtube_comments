@@ -157,6 +157,7 @@ library(vader)
 library(ldatuning)
 library(tidytext)
 library(topicmodels) 
+library(caret)
 ```
 
 Subsequent to setting up our R session, we import the collected comments.
@@ -706,6 +707,54 @@ sample_comments_sentiment_no_scores <- sample_comments_sentiment %>%
 write.csv(sample_comments_sentiment_no_scores,"sample_sentiment_validation.csv")
 ```
 
+After each of the researchers has tagged the comments we will combine them and choose one tag for the comment by the majority method.
+
+```{r combine all tags}
+# import data
+sentiment_validation_emma <- read.csv("sentiment_validation_emma.csv", header = T)
+sentiment_validation_jade <- read.csv("sentiment_validation_jade.csv", header = T)
+sentiment_validation_kate <- read_delim("sample_validation_kate.csv", delim = ";", escape_double = FALSE, trim_ws = TRUE, show_col_types = FALSE)
+
+#merge all sentiments
+merged_sentiment_validation <- merge(sentiment_validation_emma,
+                                     sentiment_validation_jade, by = 'doc_id') %>%
+              merge(sentiment_validation_kate, by = 'doc_id')
+merged_sentiment_validation <- merged_sentiment_validation %>% select(c('doc_id','sentiment_emma','sentiment_jade','sentiment_kate'))
+
+#choose the most frequent sentiment from 3 researchers
+merged_sentiment_validation$validated_sentiment <- merged_sentiment_validation %>%
+  apply(1,function(x) names(which.max(table(x))))
+
+head(merged_sentiment_validation)
+```
+
+<!-- The package creators suggest that if a compound score is equal to or greater than 0.05, the analysed text has a positive sentiment. Texts with a compound score lower than 0.05 but greater than -0.05 are said to have a neutral sentiment. A compound score lower than or equal to -0.05 indicates a negative sentiment. -->
+
+<!-- I was thinking to define more 'strict' definition of sentiment but the accuracy was pretty much the same -->
+
+```{r confusion-matrix, fig.cap="Confusion matrix of assigned sentiment by model and expected sentiment"}
+sample_comments_sentiment <- sample_comments_sentiment %>% 
+  mutate(assigned_sentiment = case_when(
+  sent_score >= 0.05 ~ 'positive',
+  sent_score <= -0.05 ~ 'negative',
+  sent_score < 0.05 & sent_score > -0.05 ~ 'neutral'),
+  
+  strict_assigned_sentiment = case_when(
+  sent_score >= 0.1 ~ 'positive',
+  sent_score <= -0.1 ~ 'negative',
+  sent_score < 0.1 & sent_score > -0.1 ~ 'neutral')
+  )
+
+merged_sentiment_comments <- merge(merged_sentiment_validation,
+                                     sample_comments_sentiment, by = 'doc_id') %>% 
+  select(c('doc_id','textOriginal','assigned_sentiment',
+           'validated_sentiment','strict_assigned_sentiment'))
+
+confusionMatrix(reference = factor(merged_sentiment_comments$validated_sentiment),
+                data = factor(merged_sentiment_comments$assigned_sentiment))
+```
+
+As we can see at Figure \@ref(fig:confusion-matrix), 
 
 # Results and Discussion
 
