@@ -111,14 +111,14 @@ To address our research aims, we use a combination of web scraping, sentiment an
 
 # Data Collection
 
-In R, there are two packages for scraping Youtube comments: `vosonSML` and `tuber`. To decide which package to settle with, we retrieve the comments with both tools and compare the obtained results. At the time of data collection, that is, the 16th May 2022, \cites{JaidenAnimationsVideo} video has 231,866 comments. When scraping the comments, we receive the following data:
+In R, there are two packages for scraping Youtube comments: `vosonSML` and `tuber`. To decide which package to use, we retrieve the comments with both tools and compare the obtained results. At the time of data collection, that is, the 16th May 2022, \cites{JaidenAnimationsVideo} video has 231,866 comments. When using the aforementioned packages, we receive the following data:
 
 \begin{itemize}
   \item \emph{vosonSML}: 151,884 scraped comments
   \item \emph{tuber}: 180,743 scraped comments
 \end{itemize}
 
-For comparability purposes, we also use \cites{RiederTools} web tool to extract the comments which results in 218,848 observations. What is striking about these results is that none of the tested packages and tools are able to extract all Youtube comments. Since we conduct our analysis in R, we opt for the `tuber` package as it not only parses about 30,000 comments more than the `vosonSML` package but also is more transparent regarding issues with the number of returned comments \citep[see e.g.,][]{IssuesTuber}. The exact code we used to collect our data on the 16th May 2022 is shown below.
+For comparability purposes, we also use \cites{RiederTools} web tool to extract the comments, which results in 218,848 observations. What is striking about these results is that none of the tested packages and tools are able to extract all Youtube comments. Since we conduct our analysis in R, we opt for the `tuber` package as it not only parses about 30,000 comments more than the `vosonSML` package but also is more transparent regarding the issue with the number of returned comments \citep[see e.g.,][]{IssuesTuber}. The exact code we used to collect our data on the 16th May 2022 is shown below.
 
 ```{r tuber, eval = F}
 # authenticate Youtube API
@@ -268,7 +268,7 @@ comments_token <- corpus(og.comments$textOriginal) %>%
 
 ## Negation Bigrams
 
-To account for negations, we generate negation bigrams (i.e., bigrams that start with a negation word). We then replace the individual two words of the negation bigram by the negation bigram (e.g., 'not' and 'good' are replaced by 'not_good'). The code for this procedure is adapted from \citet{QuantedaNGrams}.
+To account for negations, we generate negation bigrams (i.e., bigrams that start with a negation word). We then replace the individual two words of a negation bigram by the negation bigram (e.g., 'not' and 'good' are replaced by 'not_good'). The code for this procedure is adapted from \citet{QuantedaNGrams}.
 
 ```{r negation bigrams}
 # prepare negation words
@@ -284,7 +284,7 @@ toks_neg_bigram[["text2"]]
 
 ## Stopwords
 
-After having accounted for negation words, we can remove them along with other stopwords. For this, we use the 'smart' dictionary, because there are inconsistencies in other popular dictionaries. For example, whilst 'can't' and 'cannot' are removed with the 'en' dictionary, its counterpart 'can' is not, which would lead to skewed results. We moreover customise the stopwords by removing the words 'thank and 'thanks' from the list. Again, we use the padding statement to remember the initial position of each word in a comment.
+After having accounted for negation words, we remove them along with other stopwords. For this, we use the 'smart' dictionary, because there are inconsistencies in other popular dictionaries. For example, whilst 'can't' and 'cannot' are removed with the 'en' dictionary, its counterpart 'can' is not, which would lead to skewed results. We moreover customise the stopwords by removing the words 'thank' and 'thanks' from the list. Again, we use the padding statement to remember the initial position of each word in a comment.
 
 ```{r stopwords}
 # select dictionary
@@ -304,7 +304,7 @@ no_stopw[["text2"]]
 
 ## Collocations
 
-Next, we check for the most common collocations (i.e., n-grams that occur more often than by chance). As part of this procedure, we set the minimum number of occurrences to 10 and limit the n-grams to bigrams. Due to out consistent usage of the padding statement, the function will only generate a bigram when two words were adjacent in the original comment. Our code follows the example given by \citet{QuantedaCompound}.
+Next, we check for the most common collocations (i.e., n-grams that occur more often than by chance). As part of this procedure, we set the minimum number of occurrences to 10 and limit the n-grams to bigrams. Due to our consistent usage of the padding statement, the function will only generate a bigram when two words were adjacent in the original comment. Our code follows the example given by \citet{QuantedaCompound}.
 
 ```{r collocations}
 # remove non-words
@@ -448,7 +448,7 @@ vader_results <- vader_df(sample_cleaned$textOriginal)
 
 Before interpreting the obtained result, we want to give a brief description of the underlying workings of the used package. According to the official documentation \citep[see][]{VaderGit}, each word in the analysed text is assigned a number, a so called \emph{valence score}, which is recorded in a dictionary. To determine a text's sentiment, all valence scores are summed and normalised. The resulting \emph{compound score} is a number between -1 (very negative) and 1 (very positive). The package creators suggest that if a compound score is equal to or greater than 0.05, the analysed text has a positive sentiment. Texts with a compound score lower than 0.05 but greater than -0.05 are said to have a neutral sentiment. A compound score lower than or equal to -0.05 indicates a negative sentiment. Based on our average compound score of 0.38 --- which is significantly above the suggested threshold of 0.05 --- it is fair to say that the overall sentiment in the comment section appears to be positive. 
 
-To verify this finding, we carry out a dictionary-based sentiment analysis. For this, we use the underlying workings of the `quanteda.sentiment` package as described by \citet{Benoit2019} and \citet{Benoit2021}. As we are not aware of any dictionary dedicated to social media data, we make a few adaptions to the \emph{data\_dictionary\_LSD2015} dictionary. We remove, for example, the term \emph{demis*} from the list with negative word patterns as demisexuality\{Demisexuality is an identity falling under the asexual umbrella.} would be allocated a negative sentiment otherwise. Despite the need for alterations, however, the used dictionary has the clear advantage of including negations. This means that our analysis will account for our negation bigrams and recognise that terms such as 'not good' have a negative sentiment. The procedure is applied to the cleaned tokenised comments. To determine the global sentiment of the comments, we calculate the mean of the obtained sentiments scores. The code for this is taken from \citet{Benoit2019}.
+To verify this finding, we carry out a dictionary-based sentiment analysis. For this, we use the underlying workings of the `quanteda.sentiment` package as described by \citet{Benoit2019} and \citet{Benoit2021}. As we are not aware of any dictionary dedicated to social media data, we make a few adaptions to the \emph{data\_dictionary\_LSD2015} dictionary. We remove, for example, the term \emph{demis*} from the list with negative word patterns as demisexuality\footnote{Demisexuality is an identity falling under the asexual umbrella.} would be allocated a negative sentiment otherwise. Despite the need for alterations, however, the used dictionary has a clear advantage: It includes negations. This means that our analysis will account for our negation bigrams and recognise that terms such as 'not good' have a negative sentiment. The procedure is furthermore applied to the cleaned tokenised comments. To determine the global sentiment of the comments, we calculate the mean of the obtained sentiments scores. The code for this is taken from \citet{Benoit2019}.
 
 ```{r dict sentiment}
 my_dictionary <- data_dictionary_LSD2015
@@ -480,11 +480,11 @@ head(dict_output)
 (mean_dict <- dict_output$sent_score %>% mean(na.rm = TRUE) %>% round(2))
 ```
 
-Akin to the previous section, we want to briefly outline how the final sentiment score is computed before making any interpretations. Whilst the official documentation does not into great detail about the sentiment calculation, \cites{Benoit2019} presentation provides useful insights into the workings of the package. According to his slides, the number of positive, negative, negative_positive (e.g., 'not good') and negative_negative (e.g., 'not dumb') words are counted per comment. The number of positive comments (i.e, the sum of the number of positive and negative_negative comments) is then divided by the number of negative comments (i.e., the sum of the number of negative and negative_positive comments). As part of this procedure, a constant is added to both denominator and numerator so as to avoid dividing by zero. Finally, the log is taken of the result to mean center the sentiment scores.
+Akin to the previous section, we want to briefly outline how the final sentiment score is computed before making any interpretations. Whilst the official documentation does not go into great detail about the sentiment calculation, \cites{Benoit2019} presentation provides useful insights into the workings of the package. According to his slides, the number of positive, negative, negative_positive (e.g., 'not good') and negative_negative (e.g., 'not dumb') words are counted per comment. The number of positive comments (i.e, the sum of the number of positive and negative_negative comments) is then divided by the number of negative comments (i.e., the sum of the number of negative and negative_positive comments). As part of this procedure, a constant is added to both denominator and numerator so as to avoid dividing by zero. Finally, the log is taken of the result to mean center the sentiment scores.
 
-As the dictionary-based sentiment scores are not normalised to be between -1 and 1, the results are scaled somewhat differently than the ones given by the `vader` package. Nonetheless, a global sentiment score of 0.5 further supports the finding that the overall sentiment of the comments is positive.
+As the dictionary-based sentiment scores are not normalised to be between -1 and 1, the results are scaled somewhat differently than the ones given by the `vader` package. Nonetheless, a global sentiment score of 0.5 also suggests that the overall sentiment of the comments is positive.
 
-Next, we plot the results of the dictionary-based sentiment analysis.
+Following the calculation of the sentiment scores, we plot the results of the dictionary-based sentiment analysis.
 
 ```{r dict-plot, fig.cap = "Histogram of Sentiment Distribution"}
 # plot sentiment distribution
@@ -505,7 +505,7 @@ As we have obtained similar results with both approaches, we will move forward w
 
 ## Weighted Sentiment Analysis
 
-In the next step, we will account for the number of likes of each comment. For this, we first confirm that the document-feature matrix includes the same number of observations as the data frame containing the like data. We then increment the like count by one to account for the author of a comment and multiply the result with the document-feature matrix created as part of the unweighted sentiment analysis.
+In the next step, we will account for the number of likes of each comment. For this, we first confirm that the document-feature matrix includes the same number of observations as the data frame containing the like data. We then increment the like count by one to account for the author of a comment, the result of which we multiply with the document-feature matrix created as part of the unweighted sentiment analysis.
 
 ```{r weights}
 # check if uncleaned data and cleaned data have the same number of comments
@@ -539,7 +539,7 @@ As we can see, the weighted average sentiment score is greater than the unweight
 
 ## Topic Modelling
 
-Aside from investigating how the audience perceived the video emotionally, we seek to understand what topics prevailed in the comment section. For this, we use the unsupervised method topic modelling. <!-- not sure this is needed: A DFM has one row per observation (or comment in our case) and one column per word. Accordingly, at the intersection of row i and column j is the value 1 if the word j is included in the comment i and the value 0 if it is not included. -->, in preparation of which we further wrangle the already cleaned comments. This includes the creation of a document-feature matrix (DFM) and the removal of low and high frequency words. More precisely, we remove words that appear in more than 10% of all comments and retain only the top 20% of the most frequent words. We eventually remove all empty rows as these would create issues when building the topic model. The code for this procedure is adapted from \citet{QuantedaTopicmodel}.
+Aside from investigating how the audience perceived the video emotionally, we seek to understand what topics prevailed in the comment section using the unsupervised method topic modelling, <!-- not sure this is needed: A DFM has one row per observation (or comment in our case) and one column per word. Accordingly, at the intersection of row i and column j is the value 1 if the word j is included in the comment i and the value 0 if it is not included. -->In preparation for this, we further wrangle the already cleaned comments. This includes the creation of a document-feature matrix (DFM) and the removal of low and high frequency words. More precisely, we retain only the top 20% of the most frequent words and remove all words that appear in more than 10% of all comments. We eventually remove all empty rows as these would create issues when building the topic model. The code for this procedure is adapted from \citet{QuantedaTopicmodel}.
 
 <!-- there is better interpretation: https://quanteda.io/reference/dfm_trim.html -->
 
@@ -562,7 +562,7 @@ no_empty <- comments_dfm_trim %>% dfm_keep() %>% dfm_subset(ntoken(.) > 0)
 cat("Vocabulary size after removing frequency words:", ncol(no_empty))
 ```
 
-Before fitting the topic model, we need to determine the number of $k$, that is, the number of topics in the comments. To this end, we compute different metrics to help us identifying the optimal number of topics. The code for this is taken from \citet{Puschmann2022}.
+Prior to fitting the model, we determine the parameter $k$, that is, the number of topics in the comments. To this end, we compute different metrics to help us identify the optimal number of topics. The code for this is taken from \citet{Puschmann2022}.
 
 <!-- I do not recommend running the chunk below as that takes about 15 minutes. To view the results, you can import the RData file to which I saved the output. -->
 
@@ -590,7 +590,7 @@ load("ldatuning_topic_numbers.RData")
 FindTopicsNumber_plot(lda_topics)
 ```
 
-According to Figure \@ref(fig:topic-numbers-plot), there is no straightforward answer to the question regarding the optimal number of topics. Whereas the metrics based on Griffiths2004 and Arun2010 gradually improve and thus support $k = 15$, CaoJuan2009 and Deveaud2014's measures suggest that $k = 3$ and $k = 10$ fit our data well. Given these inconclusive results, we now fit various topic models with different numbers for $k$ (range 2 to 10). 
+According to Figure \@ref(fig:topic-numbers-plot), there is no straightforward value for $k$. Whereas the metrics based on Griffiths2004 and Arun2010 gradually improve and thus support $k = 15$, CaoJuan2009 and Deveaud2014's measures suggest that $k = 3$ and $k = 10$ fit our data well. Given these inconclusive results, we now fit various topic models with different numbers for $k$ (range 2 to 10). 
 
 <!-- The following chunk takes about 20 minutes to run. I have saved the output to an Rdata file, so you don't have to execute the code yourself. -->
 
@@ -608,7 +608,7 @@ save(topicmodels_2, topicmodels_3, topicmodels_4, topicmodels_5, topicmodels_6,
      file = 'topicmodels.Rdata')
 ```
 
-Next, we look at the output of the different topic models to manually check which number of topics makes most sense semantically and is most coherent (output of models with $k > 5$ are omitted).
+Next, we look at the output of the different topic models to manually check which number of topics makes most sense semantically (output of models with $k > 6$ are omitted).
 
 ```{r inspect topic models}
 # import saved topic models
@@ -619,9 +619,10 @@ topicmodels::terms(topicmodels_2, 10)
 topicmodels::terms(topicmodels_3, 10)
 topicmodels::terms(topicmodels_4, 10)
 topicmodels::terms(topicmodels_5, 10)
+topicmodels::terms(topicmodels_6, 10)
 ```
 
-Based on the output, four topics seem to be the most coherent. However, it should be noted that the topics are not clearly distinguished in any of the inspected models. Upon identifying the number of topics, we plot the keywords and their probabilities for $k = 4$. The code for the visualisation is adopted from \citet{Silge2022} and \citet{Silge2018}.
+Based on the output of the different models, four topics seem to be the most coherent although it should be noted that the topics are not clearly distinguished in any of the inspected models. It is further apparent that with a growing number of topics, the overlap between topics increases. Upon identifying a value for $k$, we plot the keywords and respective probabilities for a model with four topics. The code for the visualisation is adopted from \citet{Silge2018} and \citet{Silge2022}.
 
 
 ```{r plot-topic-model, fig.cap = "Keyword Probabilities per Topic", out.width="80%"}
@@ -662,7 +663,9 @@ To validate the results of our analyses, we now turn to our robustness checks.
 
 ## Validation of Sentiment Analyis
 
-The aim of the validation of the sentiment analysis is to test how accurately the dictionary approach detects the sentiment of the comments. For this, we loosely follow the procedure described by \citet{SentimentValidation}. We start the validation process by randomly sampling 100 comments. Each of the researchers in this paper (3 in total) then reads the sampled comments and classifies them as either positive, negative or neutral. When coding the comments, the researchers are unaware of the results of the dictionary-based sentiment analysis .
+We begin the validation process by testing how accurately the dictionary approach detects the sentiment of the comments. For this, we loosely follow the procedure outlined by \citet{SentimentValidation}. 
+
+First, we randomly sample 100 comments. Each of the researchers in this paper, that is, 3 in total, then reads the sampled comments and classifies them as either positive, negative or neutral. When coding the comments, the researchers are unaware of the results of the dictionary-based sentiment analysis.
 
 ```{r sample comments}
 # merge comments and dfm matrix with sentiments
@@ -682,7 +685,7 @@ sample_comments_sentiment_no_scores <- sample_comments_sentiment %>%
 write.csv(sample_comments_sentiment_no_scores,"sample_sentiment_validation.csv")
 ```
 
-Upon manually coding the data, we import the coded comments and merge them into a data frame.
+Upon manually annotating the data, we import the coded comments and merge them into a data frame.
 
 ```{r import manual coding sent}
 # import manually coded comments
@@ -697,7 +700,7 @@ sentiment_validation <- merge(coder_1, coder_2, by = "doc_id") %>% merge(coder_3
 head(sentiment_validation)
 ```
 
-We then transform the data frame and calculate the intercoder reliability using Krippendorff's $\alpha$. 
+We then transpose the data frame and subsequently calculate the intercoder reliability using Krippendorff's $\alpha$. 
 
 <!-- The warning message "NAs introduced by coercion" can be ignored: https://stackoverflow.com/questions/21907540/irr-krippendorfs-alpha-with-non-numeric-classifications-warning-message -->
 ```{r intercoder reliability}
@@ -706,19 +709,16 @@ sentiment_validation_t <- sentiment_validation %>% t() %>% as.data.frame()
 names(sentiment_validation_t) <- sentiment_validation_t[1, ] %>% as.matrix()
 sentiment_validation_t <- sentiment_validation_t[-1, ]
 
-# convert to matrix
-sentiment_validation_m <- sentiment_validation_t %>% as.matrix()
-
 # compute intercoder reliability
-sentiment_validation_m %>% kripp.alpha(method = "ordinal")
+sentiment_validation_t %>% as.matrix() %>% kripp.alpha(method = "ordinal")
 
 # compute pairwise intercoder reliability
-sentiment_validation_m[1:2, ] %>% kripp.alpha(method = "ordinal")
-sentiment_validation_m[2:3, ] %>% kripp.alpha(method = "ordinal")
-sentiment_validation_m[-2, ] %>% kripp.alpha(method = "ordinal")
+sentiment_validation_t[1:2, ] %>% as.matrix() %>% kripp.alpha(method = "ordinal")
+sentiment_validation_t[2:3, ] %>% as.matrix() %>% kripp.alpha(method = "ordinal")
+sentiment_validation_t[-2, ] %>% as.matrix() %>% kripp.alpha(method = "ordinal")
 ```
 
-As we can see above, Krippendorff’s $\alpha$ is 0.77, with the pairwise intercoder reliability ranging from 0.69 to 0.87. Using a majority vote, we now add a new column to the data frame indicating the dominant sentiment of the manual coding.
+As we can see above, Krippendorff’s $\alpha$ is 0.77, with the pairwise intercoder reliability ranging from 0.69 to 0.87. Using a majority vote, we now add a new column to the data frame which indicates the dominant sentiment from the manual coding.
 
 ```{r dominant categries}
 # determine dominant categories among manual coding
@@ -730,7 +730,7 @@ sentiment_validation_t <- sentiment_validation_t %>%
 sentiment_validation_t[, 1:6]
 ```
 
-Next, in accordance with the recommendations made by \citep{VaderGit}, each numerical sentiment score from the unweighted sentiment analysis is assigned a sentiment category (positive, negative, neutral). 
+Next, in accordance with the recommendations made by \citet{VaderGit}, each numerical sentiment score from the unweighted sentiment analysis is assigned one of the following sentiment categories: positive, negative or neutral. 
 
 
 ```{r recode sent output}
@@ -742,7 +742,7 @@ sentiment_validation_results <- sample_comments_sentiment %>% select(-textOrigin
 # show re-coded data frame
 head(sentiment_validation_results)
 ```
-We then transform the data frame with the results of the dictionary approach and merge it with the results of the manual coding.
+After that, we transpose the data frame with the results of the dictionary approach and merge it with the dominant results of the manual coding.
 
 ```{r merge sentiments}
 # transform dict data frame
@@ -756,28 +756,38 @@ sentiment_merged <- rbind(sentiment_manual = sentiment_validation_t[4, ],
       sentiment_dictionary = sentiment_validation_results_t)
 
 # show merged sentiments
-sentiment_merged[, 1:6]
+sentiment_merged[, 1:5]
 ```
 Finally, we calculate Krippendorff's $\alpha$ to check the level of agreement between the manually coded sentiments and the dictionary-based sentiments.
 
 ```{r agreement dict man}
-# convert to matrix
-sentiment_merged_m <- sentiment_merged %>% as.matrix()
-
 # compute agreement between manual coding and dictionary approach
-sentiment_merged_m %>% kripp.alpha(method = "ordinal")
+sentiment_merged %>% as.matrix() %>% kripp.alpha(method = "ordinal")
 ```
 
-As is apparent in the output, Krippendorff's $\alpha$ of 0.37 is rather low. To investigate any misclassifications, we therefore take a look at a confusion matrix.
+As is apparent in the output, Krippendorff's $\alpha$ is 0.37, which is rather low but higher than the values obtained by \citet{SentimentValidation} when comparing the precision of different dictionaries. To investigate any misclassifications, we next take a look at a confusion matrix.
 
 ```{r confusion matrix}
 # create confusion matrix
 sentiment_merged_t <- t(sentiment_merged) %>% as.data.frame
-table(dictionary = sentiment_merged_t$sentiment_dictionary,
-      manual = sentiment_merged_t$sentiment_manual)
+table(DICTIONARY = sentiment_merged_t$sentiment_dictionary,
+      MANUAL = sentiment_merged_t$sentiment_manual)
 ```
 
+The table reveals that most comments (i.e., 59) are correctly classified. We can further see that when misclassifications occur, this mostly tends to happen between neutral and positive sentiments. What stands out in the table is that two comments were classified as positive even though the coders deemed them as negative, and two comments were classified as negative even though the coders deemed them as positive. To further investigate this, we take a closer look at the misclassified comments. Although this procedure is undertaken for all misclassified comments, we exemplify our course of action with comment number 97832.
 
+```{r inspection}
+# show full comment
+og.comments$textOriginal[[97832]]
+
+# show cleaned comment
+cleaned_comments[97832, ]
+
+# show sentiment score
+dict_output[97832, ]
+```
+
+As shown above, the dictionary-based approach assigned comment number 97832 a positive sentiment. This is becasue the terms \emph{love} and \emph{uphold*} are included as positive word patterns in the used dictionary. The manual coders, on the other hand, classified the comment as negative\footnote{To be precise, two researchers coded it as negative, and one coded it as neutral.}. Even though the scores assigned by the dictionary approach contradict the manually coded sentiments, this appears to be not a result of a poorly constructed dictionary but more so an issue of the employed method which largely neglects the context of words.
 
 ## Validation of Topic Modelling
 
@@ -798,7 +808,7 @@ did not take emojis into account (merely focussed on raw text)
 
 only considered parent comments
 
-ambiguity of words, for example, the term 'love' has different meanings depending on whether it is used as a verb or a noun. If used as a verb, it likely expresses a sentiment (e.g., 'I love your video'). If used as a noun, it probably refers to the content of the video (e.g., 'love is all around'\footnote{In the given example 'love is all around', it could be argued that the statement contains a negative sentiment, because the statement suggests that everyone experiences love when this is not necessarily the case. However, such fine-grained analysis lies far beyond the scope of this report and thus was not taken into account in our analysis.}).
+ambiguity of words, for example, the term 'love' has different meanings depending on whether it is used as a verb or a noun. If used as a verb, it likely expresses a sentiment (e.g., 'I love your video'). If used as a noun, it probably refers to the content of the video (e.g., 'love is all around'\footnote{In the given example 'love is all around', it could be argued that the statement contains a negative sentiment as it suggests that everyone experiences love when this is not necessarily the case. However, such fine-grained analysis lies far beyond the scope of this report and thus was not taken into account in our analysis.}).
 
 speech embeddings/word2vec and part-of-speech tagging were not used
 
