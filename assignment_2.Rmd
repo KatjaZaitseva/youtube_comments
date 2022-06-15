@@ -107,7 +107,7 @@ In March of this year, the Youtube channel \citet{JaidenAnimationsVideo} uploade
 
 # Methodological Design
 
-To address our research aims, we use a combination of web scraping, sentiment analysis and topic modelling. We start our project by scraping the comments via the Youtube API. We then clean and explore the data. For this, we use a range of methods, namely subsetting, noise removal, negation bigrams, stopword removal, collocations, lemmatisation and the removal of irrelevant high frequency words. After that, we conduct a dictionary-based sentiment analysis to quantify how the majority of viewers felt about the video (i.e., positively or negatively). This process consists of two steps: First, we carry out a sentiment analysis with the cleaned comments. Second, we account for any differences in the comments' popularity by weighting each comment according to their like number. Finally, to explore the key themes in the comments, we employ topic modelling.
+To address our research aims, we use a combination of web scraping, sentiment analysis and topic modelling. We start our project by scraping the comments via the Youtube API. We then clean and explore the data. For this, we use a range of methods, namely subsetting, noise removal, negation bigrams, stopword removal, collocations, lemmatisation and the removal of irrelevant frequency words. After that, we conduct a dictionary-based sentiment analysis to quantify how the majority of viewers felt about the video (i.e., positively or negatively). This process consists of two steps: First, we carry out a sentiment analysis with the `vader` package and a commonly used dictionary. Second, we account for any differences in the comments' popularity by weighting each comment according to their like number. Finally, to explore the key themes in the comments, we employ topic modelling.
 
 # Data Collection
 
@@ -118,7 +118,7 @@ In R, there are two packages for scraping Youtube comments: `vosonSML` and `tube
   \item \emph{tuber}: 180,743 scraped comments
 \end{itemize}
 
-For comparability purposes, we also use \cites{RiederTools} web tool to extract the comments, which results in 218,848 observations. What is striking about these results is that none of the tested packages and tools are able to extract all Youtube comments. Since we conduct our analysis in R, we opt for the `tuber` package as it not only parses about 30,000 comments more than the `vosonSML` package but also is more transparent regarding the issue with the number of returned comments \citep[see e.g.,][]{IssuesTuber}. The exact code we used to collect our data on the 16th May 2022 is shown below.
+For comparability purposes, we also use \cites{RiederTools} web tool to extract the comments, which results in 218,848 observations. What is striking about these results is that none of the tested packages and tools are able to extract all Youtube comments. Since we conduct our analysis in R, we opt for the `tuber` package as it not only parses about 30,000 comments more than the `vosonSML` package but also is more transparent regarding the issue with the number of returned comments \citep[see e.g.,][]{IssuesTuber}. The exact code we used for our data collection on the 16th May 2022 is shown below.
 
 ```{r tuber, eval = F}
 # authenticate Youtube API
@@ -427,11 +427,9 @@ Now that we have cleaned the comments, we can embark on the analysis. This proce
 
 ## Unweighted Sentiment Analysis
 
-We start our analysis with an unweighted sentiment analysis. For this method, we use two different approaches: First, we use the `vader` package, a tool specifically designed for sentiment analyses on social media data. As this package requires quite some computational power and time, we will use a random sample of 1,000 comments for this procedure. Second, we use the code underpinning the `quanteda.sentiment` package to conduct a dictionary-based sentiment analysis on the entire data set. We then compare the results of both approaches to see whether the all-purpose dictionary used on all comments is suitable for Youtube comments.
+We start our analysis with an unweighted sentiment analysis. For this method, we use two different approaches: First, we use the `vader` package, a tool specifically designed for sentiment analyses on social media data, to determine the sentiment of the comments. As this package requires quite some computational power and time, we will use a random sample of 1,000 comments for this procedure. Second, we use the code underpinning the `quanteda.sentiment` package to conduct a dictionary-based sentiment analysis on the entire data set. We then compare the results of both approaches to see whether the all-purpose dictionary used on all comments is suitable for Youtube comments.
 
-<!-- She mentioned 'make sure to explain in detail how you have sampled your items (random sample, stratified sample...) and why this sampling technique was the best one for your research question', even though we do sampling only here, better to explain why specifically this technique -->
-
-To ensure our results are reproducible, we use the set seed function. We then randomly sample 1,000 comments from our data set. We used random sampling without replacement because we did not have the availability of other variables about users to take advantage of systematic or stratified sampling procedures. As the `vader` package is applied to textual and not tokenised data, we use the uncleaned column \emph{textOriginal} for this analysis. Upon obtaining the results from the `vader` package, we calculate the average sentiment across all comments.
+To ensure our results are reproducible, we use the set seed function. We then randomly sample 1,000 comments from our data set. Given the lack of available user information, we use random sampling without replacement instead of another sampling procedure (e.g., systematic or stratified sampling). As the `vader` package is applied to textual and not tokenised data, we use the uncleaned column \emph{textOriginal} for the analysis. Upon obtaining the results from the `vader` package, we calculate the average sentiment across all comments.
 
 
 ```{r vader}
@@ -560,7 +558,7 @@ no_empty <- comments_dfm_trim %>% dfm_keep() %>% dfm_subset(ntoken(.) > 0)
 cat("Vocabulary size after removing frequency words:", ncol(no_empty))
 ```
 
-Prior to fitting the model, we determine the parameter $k$, that is, the number of topics in the comments. For this, we compute different metrics to help us identify the optimal number of topics. The code for this is taken from \citet{Puschmann2022}.
+Prior to fitting the model, we determine the parameter $k$, that is, the number of topics in the comments. To this end, we compute different metrics to help us identify the optimal number of topics. The code for this is taken from \citet{Puschmann2022}.
 
 <!-- I do not recommend running the chunk below as that takes about 15 minutes. To view the results, you can import the RData file to which I saved the output. -->
 
@@ -785,7 +783,7 @@ cleaned_comments[97832, ]
 dict_output[97832, ]
 ```
 
-As shown above, the dictionary-based approach assigns comment number 97,832 a positive sentiment. This is because the terms \emph{love} and \emph{uphold*} are included as positive word patterns in the used dictionary. The manual coders, conversely, classify the comment as negative\footnote{To be precise, two researchers coded it as negative, and one coded it as neutral. The overall manual sentiment was therefore negative.}, because it invalidates Jaiden's experiences and is generally condescending. However, although the scores assigned by the dictionary approach contradict the manually coded sentiments, the inspection of the word patterns suggests that this is not a result of a poorly constructed dictionary but more so an issue of the employed method which largely neglects the context of words.
+As shown above, the dictionary-based approach assigns comment number 97,832 a positive sentiment. This is because the terms \emph{love} and \emph{uphold*} are included as positive word patterns in the used dictionary. The manual coders, conversely, classify the comment as negative\footnote{To be precise, two researchers coded it as negative, and one coded it as neutral. The overall manual sentiment was therefore negative.}, because it invalidates Jaiden's experiences and is generally condescending. Yet, although the scores assigned by the dictionary approach contradict the manually coded sentiments, the inspection of the word patterns suggests that this is not a result of a poorly constructed dictionary but more so an issue of the employed method which largely neglects the context of words.
 
 ## Topic Model Validation
 
@@ -845,13 +843,20 @@ agree that the comments are positive, supportive and thankful for the video. Cod
 
 # Results and Discussion
 
-<!--Describe your results and conclusion concisely. That means: elaborate on meaningful results
-and not on technical issues. We want an answer to the research question, and nog a technical
-elaboration (what model performs best under which metrics, SE, failures, etc).-->
+One of the main objectives of our study is to understand the comment sentiment of \cites{JaidenAnimationsVideo} video. Based on an exploratory word cloud and unweighted sentiment analyses with the `vader` package and an all-purpose dictionary, our findings suggest that the overall sentiment is positive. This is even more so the case when considering the results of the unweighted sentiment analysis, which indicate that positive comments are more liked than neutral or negative comments. This result is in line \cites{Siersdorfer2010} finding that Youtube users tend to like positive comments and dislike negative comments\footnote{As of November \citeyear{Youtube2021}, \citeauthor{Youtube2021} has privated the dislike count. Although videos and comments can still be disliked, the numbers are no longer publicly displayed.}.
 
-The video \citet{JaidenAnimationsVideo} introduced the audience to the topic of aromanticism and asexuality, in which the creator of the video also shared her personal experience. The first question that arises is how this video has been responded to. Of course, one can read the top of the first comments and try to draw conclusions as to how the public reacted to it, but when there are more than 100,000 comments, just a few comments cannot reveal the whole picture. This is why special algorithms are used for such big data analysis, which help to generalise the conclusions to the entire audience. In this work, 180,743 comments were obtained from the time the video was published (20 March 2022) until the 16th May 2022. After the text processing step, namely removing comments that are responses to other comments, clearing the text of noise, tokenisation, adding negation bigram and collocations, removing stopwords and lemmatisation, we were left with 118,342 comments. A sentiment analysis was carried out, which assigned the score to each comment and revealed that comments in general are positive with the total score 0.5 which is significantly more than zero. In addition, sentiment analysis was adapted to the specifics of Youtube, where there may be few comments, but one comment can garner tens of times the number of likes than the number of comments. So, if we do not take into account the likes, we might miss the moment when one negative or positive comment could be supported by thousands more people. We therefore carried out a weighted sentiment analysis and found that the score of the sentiment analysis increased to 0.61, meaning that people were more likely to support positive comments.
+On the question of the discussed topics in the comments, our analysis found that many commenters share their own experiences, post unrelated messages, express their opinion about the video and its content, and show support and appreciation for the creator. In light of \cites{Fox2016} research findings, which show that "online role models [are] most essential for individuals with identities that are rarely portrayed or invisible in regular media, such as asexuals" (p. 641), the prevalence of praise and support in the comments is not surprising. Similarly, the emphasis on the relevance and importance of the video for LGBT+ people was somewhat expected given the fact that aromanticism and asexuality are still relatively unknown, so much so that the first academic article focussing exclusively on aromantic-asexual people was only published fairly recently by \citeauthor{Antonsen2020} in \citeyear{Antonsen2020}. 
 
-In order to understand the main topics discussed by the viewers in the comments, a topic modelling analysis was performed. As a result of the analysis and subsequent validation, comments were divided into 4 categories: Personal Experience, Opinion, Praise, Spam. In other words, people most often shared their own experiences, expressed their opinions with theorisations, explanations, critcisms of asexuality, aromanticism and other related identities, praised the video and expressed their gratitude, or wrote irrelevant comments or comments in another language. In contrast to research \citep{Tanvi2019}, we found that people quite often shared their own experiences rather than telling stories on behalf of a "friend". But of the commonalities with article \citep{Tanvi2019}, we found also comments that could be seen as declarations or general statements rather than experiences per se.
+Another important finding is that criticism and opinions are voiced by some commenters. According to \cites{Thelwall2012} general research on Youtube comments, debates seemingly occur more frequently in videos with many comments. Consequently, it was anticipated that some form of discourse would emerge in the analysed video. Apart from that, the range of diverse opinions may further be attributed to the fact that the video thumbnail, which is shown Figure \ref{fig:thumbnail}, did not indicate that the video was going to be about aromanticism and asexuality. As a result, some viewers might have expected a different type of content and have been taken by surprise. In fact, the video creator Jaiden Animations even jokes about this in the beginning of the video by saying "I've come to realise that I'm aro ace, which stands for aromantic asexual --- and I know what you're thinking: That's not gay, what the hell is that?" (0:45-0:55).
+
+\vspace{15pt}
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.4\textwidth]{thumbnail.jpg}
+\caption{Thumbnail of \cites{JaidenAnimationsVideo} Video}
+\label{fig:thumbnail}
+\end{figure}
+
 
 # Limitations
 
@@ -859,20 +864,11 @@ A number of limitations need to be noted regarding our project. First, we were u
 
 # Conclusion
 
-Nowadays, most people spend a lot of time on social media, and consider Youtube as a project where one can gain general knowledge about various topics. Our research demonstrated how one could measure audience attitudes towards videos revealing new topics, including understanding the 'mood' of the audience, and learning about the topics being discussed in the comments. 
-
-<!-- Found an example of this paragraph in \citep{Tanvi2019} -->
-
-# Ethical considerations
-
-As we were working with comments, we were dealing with the text of specific people, so there is an ethical aspect that needed to be considered. We used the available Youtube API, in which the developers have preliminarily limited the set of parameters that can be collected from users on that site. Thus, we did not collect user data that the user did not consent to. Moreover, in our work we anonymised all comments by removing the \emph{authorChannelId} at the beginning.
+This study was undertaken to analyse the comment section of \cites{JaidenAnimationsVideo} coming out video. More specifically, we sought to assess the views and opinions expressed by the commenters and to identify their main talking points. To this end, we combined an unweighted and weighted sentiment analysis framework with that of topic modelling. Overall, all of our analyses indicated a general positive sentiment of the comments. The results further provided insights for the discussed topics. Most importantly, we found that the comments can be clustered into four thematic groups, which are concerned with shared experiences, unrelated ideas, general thoughts on romance and sexuality, and support and gratitude.
 
 # Elevator Pitch
-<!-- End your notebook with an elevator pitch: 3-5 sentences summarizing the core of your project, design and its conclusion.-->
 
-
-
-
+Our project set out to explore how an aromantic asexual coming out story was received and conferred in the video's comment section. To address our research aims, we employed a sentiment analysis approach (unweighted and weighted by like numbers) as well as topic modelling. Our findings suggest that the video was received mostly positively, with the main points of discussion being related to personal experiences, spam, opinions, and praise.
 
 \newpage
 \bibliography{references}
