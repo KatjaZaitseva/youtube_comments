@@ -429,7 +429,9 @@ Now that we have cleaned the comments, we can embark on the analysis. This proce
 
 We start our analysis with an unweighted sentiment analysis. For this method, we use two different approaches: First, we use the `vader` package, a tool specifically designed for sentiment analyses on social media data. As this package requires quite some computational power and time, we will use a random sample of 1,000 comments for this procedure. Second, we use the code underpinning the `quanteda.sentiment` package to conduct a dictionary-based sentiment analysis on the entire data set. We then compare the results of both approaches to see whether the all-purpose dictionary used on all comments is suitable for Youtube comments.
 
-To ensure our results are reproducible, we use the set seed function. We then randomly sample 1,000 comments from our data set. As the `vader` package is applied to textual and not tokenised data, we use the uncleaned column \emph{textOriginal} for this analysis. Upon obtaining the results from the `vader` package, we calculate the average sentiment across all comments.
+<!-- She mentioned 'make sure to explain in detail how you have sampled your items (random sample, stratified sample...) and why this sampling technique was the best one for your research question', even though we do sampling only here, better to explain why specifically this technique -->
+
+To ensure our results are reproducible, we use the set seed function. We then randomly sample 1,000 comments from our data set. We used random sampling without replacement because we did not have the availability of other variables about users to take advantage of systematic or stratified sampling procedures. As the `vader` package is applied to textual and not tokenised data, we use the uncleaned column \emph{textOriginal} for this analysis. Upon obtaining the results from the `vader` package, we calculate the average sentiment across all comments.
 
 
 ```{r vader}
@@ -538,8 +540,6 @@ As we can see above, the weighted average sentiment score is greater than the un
 ## Topic Modelling
 
 Aside from investigating how the audience perceived the video emotionally, we seek to understand what topics prevailed in the comment section. For this, we use the unsupervised method topic modelling. To prepare the comments for the analysis, we further wrangle the already cleaned comments. This includes the creation of a document-feature matrix (DFM) and the removal of low and high frequency words. More precisely, we retain only the top 20% of the most frequent words and remove all words that appear in more than 10% of all comments. We eventually remove all empty rows as these would create issues when building the topic model. The code for this procedure is adapted from \citet{QuantedaTopicmodel}.
-
-<!-- there is better interpretation: https://quanteda.io/reference/dfm_trim.html -->
 
 ```{r topic model preparation}
 # create document-feature matrix
@@ -845,7 +845,13 @@ agree that the comments are positive, supportive and thankful for the video. Cod
 
 # Results and Discussion
 
+<!--Describe your results and conclusion concisely. That means: elaborate on meaningful results
+and not on technical issues. We want an answer to the research question, and nog a technical
+elaboration (what model performs best under which metrics, SE, failures, etc).-->
 
+The video \citet{JaidenAnimationsVideo} introduced the audience to the topic of aromanticism and asexuality, in which the creator of the video also shared her personal experience. The first question that arises is how this video has been responded to. Of course, one can read the top of the first comments and try to draw conclusions as to how the public reacted to it, but when there are more than 100,000 comments, just a few comments cannot reveal the whole picture. This is why special algorithms are used for such big data analysis, which help to generalise the conclusions to the entire audience. In this work, 180,743 comments were obtained from the time the video was published (20 March 2022) until the 16th May 2022. After the text processing step, namely removing comments that are responses to other comments, clearing the text of noise, tokenisation, adding negation bigram and collocations, removing stopwords and lemmatisation, we were left with 118,342 comments. A sentiment analysis was carried out, which assigned the score to each comment and revealed that comments in general are positive with the total score 0.5 which is significantly more than zero. In addition, sentiment analysis was adapted to the specifics of Youtube, where there may be few comments, but one comment can garner tens of times the number of likes than the number of comments. So, if we do not take into account the likes, we might miss the moment when one negative or positive comment could be supported by thousands more people. We therefore carried out a weighted sentiment analysis and found that the score of the sentiment analysis increased to 0.61, meaning that people were more likely to support positive comments.
+
+In order to understand the main topics discussed by the viewers in the comments, a topic modelling analysis was performed. As a result of the analysis and subsequent validation, comments were divided into 4 categories: Personal Experience, Opinion, Praise, Spam. In other words, people most often shared their own experiences, expressed their opinions with theorisations, explanations, critcisms of asexuality, aromanticism and other related identities, praised the video and expressed their gratitude, or wrote irrelevant comments or comments in another language. In contrast to research \citep{Tanvi2019}, we found that people quite often shared their own experiences rather than telling stories on behalf of a "friend". But of the commonalities with article \citep{Tanvi2019}, we found also comments that could be seen as declarations or general statements rather than experiences per se.
 
 # Limitations
 
@@ -853,8 +859,18 @@ A number of limitations need to be noted regarding our project. First, we were u
 
 # Conclusion
 
+Nowadays, most people spend a lot of time on social media, and consider Youtube as a project where one can gain general knowledge about various topics. Our research demonstrated how one could measure audience attitudes towards videos revealing new topics, including understanding the 'mood' of the audience, and learning about the topics being discussed in the comments. 
+
+<!-- Found an example of this paragraph in \citep{Tanvi2019} -->
+
+# Ethical considerations
+
+As we were working with comments, we were dealing with the text of specific people, so there is an ethical aspect that needed to be considered. We used the available Youtube API, in which the developers have preliminarily limited the set of parameters that can be collected from users on that site. Thus, we did not collect user data that the user did not consent to. Moreover, in our work we anonymised all comments by removing the \emph{authorChannelId} at the beginning.
+
 # Elevator Pitch
 <!-- End your notebook with an elevator pitch: 3-5 sentences summarizing the core of your project, design and its conclusion.-->
+
+
 
 
 
