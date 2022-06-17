@@ -94,7 +94,7 @@ knitr::opts_chunk$set(echo = TRUE, message = F, warning = F, out.width="60%", fi
 # formatting
 library(knitr)
 library(formatR)
-cutoff = 80
+cutoff = 70
 opts_chunk$set(tidy.opts = list(width.cutoff = cutoff), tidy = TRUE)
 usage(head, width = cutoff)
 
@@ -107,7 +107,7 @@ In March of this year, the Youtube channel \citet{JaidenAnimationsVideo} uploade
 
 # Methodological Design
 
-To address our research aims, we use a combination of web scraping, sentiment analysis and topic modelling. We start our project by scraping the comments via the Youtube API. We then clean and explore the data. For this, we use a range of methods, namely subsetting, noise removal, negation bigrams, stopword removal, collocations, lemmatisation and the removal of irrelevant frequency words. After that, we conduct a dictionary-based sentiment analysis to quantify how the majority of viewers felt about the video (i.e., positively or negatively). This process consists of two steps: First, we carry out a sentiment analysis with the `vader` package and a commonly used dictionary. Second, we account for any differences in the comments' popularity by weighting each comment according to their like number. Finally, to explore the key themes in the comments, we employ topic modelling.
+To address our research aims, we use a combination of web scraping, sentiment analysis and topic modelling. We start our project by scraping the comments via the Youtube API. We then clean and explore the data. For this, we use a range of methods, namely subsetting, noise removal, negation bigrams, stopword removal, collocations, lemmatisation and the removal of unmeaningful frequency words. After that, we conduct a dictionary-based sentiment analysis to quantify how the majority of viewers felt about the video (i.e., positively or negatively). This process consists of two steps: First, we carry out a sentiment analysis with the `vader` package and a commonly used dictionary. Second, we account for any differences in the comments' popularity by weighting each comment according to their like number. Finally, to explore the key themes in the comments, we employ topic modelling.
 
 # Data Collection
 
@@ -208,7 +208,7 @@ As we have seen above when inspecting the variable names, our data set includes 
   \item \emph{id}: Unique identifier of the comment
 \end{itemize}
 
-The decision to proceed with the variable \emph{textOriginal} rather than \emph{textDisplay} was motivated by the fact that the latter contains the comments in html format. Consequently, html tags and entities are present in this column, which would create more work when cleaning the comments. Other variables, such as publication date or date of comment update, are also dropped from the data frame as they are irrelevant for addressing our research questions. Most importantly, when subsetting the data frame, we remove all usernames and user characteristics as we are not interested in any personal information. In doing so, we anonymise the comments. 
+The decision to proceed with the variable \emph{textOriginal} rather than \emph{textDisplay} was motivated by the fact that the latter contains the comments in html format. Consequently, html tags and entities are present in this column, which would create more work when cleaning the comments. Other variables, such as publication date or date of comment update, are also dropped from the data frame as they are inapt for addressing our research questions. Most importantly, when subsetting the data frame, we remove all usernames and user characteristics as we are not interested in any personal information. In doing so, we anonymise the comments. 
 
 ```{r subset columns}
 # select columns
@@ -392,7 +392,7 @@ comments_freq %>%
   head(10) %>% as.data.frame() %>% select(-group)
 ```
 
-To identify words that are not meaningful to our analysis, we now go through the 100 most frequent words (output omitted due to its length). Upon identification, we remove irrelevant words from the corpus. We also drop any words with less than three characters.
+To identify words that are not meaningful to our analysis, we now go through the 100 most frequent words. The output of this procedure is omitted due to its length. Upon identification, we remove irrelevant words from the corpus. We also drop any words with less than three characters.
 
 ```{r remove freq word}
 # add words to stopword list
@@ -427,9 +427,9 @@ Now that we have cleaned the comments, we can embark on the analysis. This proce
 
 ## Unweighted Sentiment Analysis
 
-We start our analysis with an unweighted sentiment analysis. For this method, we use two different approaches: First, we use the `vader` package, a tool specifically designed for sentiment analyses on social media data, to determine the sentiment of the comments. As this package requires quite some computational power and time, we will use a random sample of 1,000 comments for this procedure. Second, we use the code underpinning the `quanteda.sentiment` package to conduct a dictionary-based sentiment analysis on the entire data set. We then compare the results of both approaches to see whether the all-purpose dictionary used on all comments is suitable for Youtube comments.
+We start our analysis with an unweighted sentiment analysis. For this method, we use two different approaches: First, we use the `vader` package, a tool specifically designed for sentiment analyses on social media data, to determine the sentiment of the comments. As this package requires quite some computational power and time, we use a random sample of 1,000 comments for this procedure. We opt for random sampling without replacement instead of another sampling method (e.g., systematic or stratified sampling) due to a lack of available user information\footnote{For ethical reasons, all user information was removed when pre-processing the data.}. Second, we use the code underpinning the `quanteda.sentiment` package to conduct a dictionary-based sentiment analysis on the entire data set. We then compare the results of both approaches to see whether the all-purpose dictionary used on all comments is suitable for Youtube comments.
 
-To ensure our results are reproducible, we use the set seed function. We then randomly sample 1,000 comments from our data set. Given the lack of available user information, we use random sampling without replacement instead of another sampling procedure (e.g., systematic or stratified sampling). As the `vader` package is applied to textual and not tokenised data, we use the uncleaned column \emph{textOriginal} for the analysis. Upon obtaining the results from the `vader` package, we calculate the average sentiment across all comments.
+To ensure our results are reproducible, we use the set seed function. We then randomly sample 1,000 comments from our data set. As the `vader` package is applied to textual and not tokenised data, we use the uncleaned column \emph{textOriginal} for the analysis. Upon obtaining the results from the `vader` package, we calculate the average sentiment across all comments.
 
 
 ```{r vader}
@@ -448,9 +448,9 @@ vader_results <- vader_df(sample_cleaned$textOriginal)
 
 Before interpreting the obtained result, it is crucial to understand the underlying workings of the used package. According to the official documentation \citep[see][]{VaderGit}, each word in the analysed text is assigned a number, a so called \emph{valence score}, which is recorded in a dictionary. To determine a text's sentiment, all valence scores are summed and normalised. The resulting \emph{compound score} is a number between -1 (very negative) and 1 (very positive). The package creators suggest that if a compound score is equal to or greater than 0.05, the analysed text has a positive sentiment. Texts with a compound score lower than 0.05 but greater than -0.05 are said to have a neutral sentiment. A compound score lower than or equal to -0.05 indicates a negative sentiment. Based on our average compound score of 0.38 --- which is significantly above the suggested threshold of 0.05 --- the overall sentiment in the comment section appears to be positive. 
 
-To verify this finding, we carry out a dictionary-based sentiment analysis. For this, we use the underlying workings of the `quanteda.sentiment` package as described by \citet{Benoit2019, Benoit2021}. As we are not aware of any dictionary dedicated to social media data, we make a few adaptions to the \emph{data\_dictionary\_LSD2015} dictionary. We remove, for example, the term \emph{demis*} from the list with negative word patterns as demisexuality\footnote{Demisexuality is an identity falling under the asexual umbrella \citep{Antonsen2020}.} would be allocated a negative sentiment otherwise. However, despite the need for alterations, the used dictionary has a clear advantage: It includes negations. This means that our analysis will account for our negation bigrams and recognise that terms such as ‘not good' have a negative sentiment. 
+To verify this finding, we carry out a dictionary-based sentiment analysis. For this, we use the underlying workings of the `quanteda.sentiment` package as described by \citet{Benoit2019, Benoit2021}. As we are not aware of any sentiment dictionary dedicated to social media data, we make a few adaptions to the general \emph{data\_dictionary\_LSD2015} dictionary. We remove, for example, the term \emph{demis*} from the list with negative word patterns as demisexuality\footnote{Demisexuality is an identity falling under the asexual umbrella \citep{Antonsen2020}.} would be allocated a negative sentiment otherwise. However, despite the need for alterations, the used dictionary has a clear advantage: It includes negations. This means that our analysis will account for our negation bigrams and recognise that terms such as ‘not good' have a negative sentiment. 
 
-The dictionary-based sentiment analysis is applied to the cleaned tokenised comments. To determine the global sentiment of the comments, we calculate the mean of the obtained sentiments scores. The code for this is taken from \citet{Benoit2019}.
+The dictionary-based sentiment analysis is applied to the cleaned tokenised comments. To determine the global sentiment of the data, we calculate the mean of the obtained sentiments scores. The code for this is taken from \citet{Benoit2019}.
 
 ```{r dict sentiment}
 my_dictionary <- data_dictionary_LSD2015
@@ -560,7 +560,7 @@ cat("Vocabulary size after removing frequency words:", ncol(no_empty))
 
 Prior to fitting the model, we determine the parameter $k$, that is, the number of topics in the comments. To this end, we compute different metrics to help us identify the optimal number of topics. The code for this is taken from \citet{Puschmann2022}.
 
-<!-- I do not recommend running the chunk below as that takes about 15 minutes. To view the results, you can import the RData file to which I saved the output. -->
+<!-- The following chunk takes about about 15 minutes to run. -->
 
 ```{r topic number, eval = F}
 # compute metrics for different number of topics
@@ -577,18 +577,19 @@ lda_topics <- FindTopicsNumber(no_empty,
 save(lda_topics, file = 'ldatuning_topic_numbers.Rdata')
 ```
 
-
-```{r topic-numbers-plot, fig.cap = "Metrics for Determining the Optimal Number of Topics"}
+```{r load saved metrics, echo = F}
 # import saved metrics
 load("ldatuning_topic_numbers.RData")
+```
 
+```{r topic-numbers-plot, fig.cap = "Metrics for Determining the Optimal Number of Topics"}
 # plot metrics
 FindTopicsNumber_plot(lda_topics)
 ```
 
 According to Figure \@ref(fig:topic-numbers-plot), there is no straightforward value for $k$. Whereas the metrics based on Griffiths2004 and Arun2010 gradually improve and thus support $k = 15$, CaoJuan2009 and Deveaud2014's measures suggest that $k = 3$ and $k = 10$ fit our data well. Given these inconclusive results, we now fit various topic models with different numbers for $k$ (range 2 to 10). 
 
-<!-- The following chunk takes about 20 minutes to run. I have saved the output to an Rdata file, so you don't have to execute the code yourself. -->
+<!-- The following chunk takes about 20 minutes to run. -->
 
 ```{r loop, eval = F}
 # loop through different values of k
@@ -606,10 +607,13 @@ save(topicmodels_2, topicmodels_3, topicmodels_4, topicmodels_5, topicmodels_6,
 
 Next, we look at the output of the different topic models to manually check which number of topics makes most sense semantically. Due to the length of the output, we only display models with $k <= 6$ in this report. 
 
-```{r inspect topic models}
+```{r load saved topic models, echo = F}
 # import saved topic models
 load("topicmodels.RData")
+```
 
+
+```{r inspect topic models}
 # print topics for different values of k
 topicmodels::terms(topicmodels_2, 10)
 topicmodels::terms(topicmodels_3, 10)
@@ -618,7 +622,7 @@ topicmodels::terms(topicmodels_5, 10)
 topicmodels::terms(topicmodels_6, 10)
 ```
 
-Based on the output of the different models, four topics seem to be the most coherent, although it should be noted that the topics are not clearly distinguished in any of the inspected models. It is further apparent that with a growing number of topics, the overlap in the model increases. Upon identifying four as the value for $k$, we assign preliminary names to each topic and plot the keywords and respective probabilities. The code for the visualisation is adopted from \citet{Silge2018} and \citet{Silge2022}.
+Based on the output of the different models, four topics seem to be the most coherent, although it should be noted that the topics are not clearly distinguished in any of the inspected models. It is further apparent that with a growing number of topics, the overlap in the models increases. Upon identifying four as the value for $k$, we assign preliminary names to each topic and plot the keywords and respective probabilities. The code for the visualisation is adopted from \citet{Silge2018} and \citet{Silge2022}.
 
 
 ```{r plot-topic-model, fig.cap = "Keyword Probabilities per Topic", out.width="80%"}
@@ -812,7 +816,7 @@ write.csv(tm_validation_all, "topic_modelling_validation.csv")
 
 Upon close inspection of the topics, we qualitatively compare our results. In the case of the first topic, which we initally labelled \emph{Personal Experience}, all coders agree that commenters share their own experiences, mostly in relation to crushes. As coders 1 and 2 note, many commenters relate to the ‘crush experience' mentioned in \cites{JaidenAnimationsVideo} video, which essentially means they purposely decided to have a crush at some point in their life without actually having had one. Coder 3, similarly, reports that commenters ‘relate', ‘realise' and give ‘examples'. Seemingly, the described experience is not only shared by people identifying under the aromantic asexual umbrella, but also by other LGBT+ folk.
 
-As for the second topic, which we initially assigned the name \emph{Opinion}, there is a consensus among coders that all comments scoring high on this topic can be classified as spam. It is moreover undisputed that the topic contains unrelated messages (e.g., Christian and Islamic prayers), trolling (e.g., about 25 comments repeat ‘not being straight is bad’ over and over again), and non-English (mostly Spanish) comments. This is a particularly interesting finding given that the keywords suggested a completely different topic interpretation. In light of these results, we change the topic name to \emph{Spam}.
+As for the second topic, which we initially assigned the name \emph{Opinion}, there is a consensus among coders that all comments scoring high on this topic can be classified as spam. It is moreover undisputed that the topic contains unrelated messages (e.g., Christian and Islamic prayers), trolling (e.g., about 25 comments repeat ‘not being straight is bad’ over and over again), and non-English comments (mostly Spanish). This is a particularly interesting finding given that the keywords suggested a completely different topic interpretation. In light of these results, we change the topic name to \emph{Spam}.
 
 In terms of the third topic, which we initially named \emph{Romance and Sexuality}, the coders agree that the topic is less well defined than the other three. They further concur that the comments include some personal experiences and are not entirely positive. Aside from these concurrences, the coders have slightly different --- but overlapping --- interpretations of the topic. Coder 3, for example, observes that the top comments are "in the spirit of a debate". This is akin to coder 2's summary that commenters are "lecturing her [Jaiden Animations] on sexuality/biology/psychology". Coder 1, similarly, remarks that the comments include theorisations, explanations, medicalisations, and critcisms of asexuality, aromanticism and other related identities. We therefore decide to re-name this topic to \emph{Opinion}.
 
@@ -823,7 +827,7 @@ agree that the comments are positive, supportive and thankful for the video. Cod
 \begingroup
 \setlength{\tabcolsep}{10pt} 
 \renewcommand{\arraystretch}{1.5} 
-\begin{table}[ht]
+\begin{table}[H]
 \centering
 \begin{tabular}{ l l }
  \hline
@@ -843,14 +847,14 @@ agree that the comments are positive, supportive and thankful for the video. Cod
 
 # Results and Discussion
 
-One of the main objectives of our study is to understand the comment sentiment of \cites{JaidenAnimationsVideo} video. Based on an exploratory word cloud and unweighted sentiment analyses with the `vader` package and an all-purpose dictionary, our findings suggest that the overall sentiment is positive. This is even more so the case when considering the results of the unweighted sentiment analysis, which indicate that positive comments are more liked than neutral or negative comments. This result is in line \cites{Siersdorfer2010} finding that Youtube users tend to like positive comments and dislike negative comments\footnote{As of November \citeyear{Youtube2021}, \citeauthor{Youtube2021} has privated the dislike count. Although videos and comments can still be disliked, the numbers are no longer publicly displayed.}.
+One of the main objectives of our study is to understand the comment sentiment of \cites{JaidenAnimationsVideo} video. Based on an exploratory word cloud and unweighted sentiment analyses with the `vader` package and an all-purpose dictionary, our findings suggest that the overall sentiment is positive. This is even more so the case when considering the results of the unweighted sentiment analysis, which indicate that positive comments are more liked than neutral or negative comments. This result is in line \cites{Siersdorfer2010} finding that Youtube users tend to like positive comments and dislike negative comments\footnote{As of November \citeyear{Youtube2021}, \citeauthor{Youtube2021} has privated the dislike count. Although videos and comments can still be disliked, the number of dislikes is no longer publicly displayed.}.
 
-On the question of the discussed topics in the comments, our analysis found that many commenters share their own experiences, post unrelated messages, express their opinion about the video and its content, and show support and appreciation for the creator. In light of \cites{Fox2016} research findings, which show that "online role models [are] most essential for individuals with identities that are rarely portrayed or invisible in regular media, such as asexuals" (p. 641), the prevalence of praise and support in the comments is not surprising. Similarly, the emphasis on the relevance and importance of the video for LGBT+ people was somewhat expected given the fact that aromanticism and asexuality are still relatively unknown, so much so that the first academic article focussing exclusively on aromantic-asexual people was only published fairly recently by \citeauthor{Antonsen2020} in \citeyear{Antonsen2020}. 
+On the question of the discussed topics in the comments, our analysis found that many commenters share their own experiences, post unrelated messages, express their opinion about the video and its content, and show support and appreciation for the creator. In light of \cites{Fox2016} research findings, which show that "online role models [are] most essential for individuals with identities that are rarely portrayed or invisible in regular media, such as asexuals" (p. 641), the prevalence of praise and support in the comments is not surprising. Similarly, the emphasis on the relevance and importance of the video for LGBT+ people was somewhat expected given that aromanticism and asexuality are still relatively unknown. This lack of awareness is well illustrated by the fact that the first academic article focussing exclusively on aromantic-asexual people was only published fairly recently by \citeauthor{Antonsen2020} in \citeyear{Antonsen2020}. 
 
-Another important finding is that criticism and opinions are voiced by some commenters. According to \cites{Thelwall2012} general research on Youtube comments, debates seemingly occur more frequently in videos with many comments. Consequently, it was anticipated that some form of discourse would emerge in the analysed video. Apart from that, the range of diverse opinions may further be attributed to the fact that the video thumbnail, which is shown Figure \ref{fig:thumbnail}, did not indicate that the video was going to be about aromanticism and asexuality. As a result, some viewers might have expected a different type of content and have been taken by surprise. In fact, the video creator Jaiden Animations even jokes about this in the beginning of the video by saying "I've come to realise that I'm aro ace, which stands for aromantic asexual --- and I know what you're thinking: That's not gay, what the hell is that?" (0:45-0:55).
+With regard to criticism and opinions, an important finding was that a diverse range of views was voiced by the commenters. According to \cites{Thelwall2012} general research on Youtube comments, debates seemingly occur more frequently in videos with many comments. Consequently, it was anticipated that some form of discourse would emerge in the analysed data. This notion was further strengthened by the fact that the video thumbnail, which is shown Figure \ref{fig:thumbnail}, does not indicate that the video is about aromanticism and asexuality. As a result, some viewers might have expected a different type of content and thus were taken by surprise by the focus of the video. In fact, the video creator Jaiden Animations even jokes about this in the beginning of the video by saying "I've come to realise that I'm aro ace, which stands for aromantic asexual --- and I know what you're thinking: That's not gay, what the hell is that?" (0:45-0:55). This links back to our previous finding that aromanticism and asexuality are still largely invisible.
 
 \vspace{15pt}
-\begin{figure}[h]
+\begin{figure}[H]
 \centering
 \includegraphics[width=0.4\textwidth]{thumbnail.jpg}
 \caption{Thumbnail of \cites{JaidenAnimationsVideo} Video}
@@ -864,7 +868,7 @@ A number of limitations need to be noted regarding our project. First, we were u
 
 # Conclusion
 
-This study was undertaken to analyse the comment section of \cites{JaidenAnimationsVideo} coming out video. More specifically, we sought to assess the views and opinions expressed by the commenters and to identify their main talking points. To this end, we combined an unweighted and weighted sentiment analysis framework with that of topic modelling. Overall, all of our analyses indicated a general positive sentiment of the comments. The results further provided insights for the discussed topics. Most importantly, we found that the comments can be clustered into four thematic groups, which are concerned with shared experiences, unrelated ideas, general thoughts on romance and sexuality, and support and gratitude.
+This study was undertaken to analyse the comment section of \cites{JaidenAnimationsVideo} coming out video. More specifically, we sought to assess the views and opinions expressed by the commenters and to identify their main talking points. To this end, we combined an unweighted and weighted sentiment analysis framework with that of topic modelling. Overall, all of our analyses indicated a general positive sentiment of the comments. The results further provided insights for the discussed topics. Most importantly, we found that the comments can be clustered into four thematic groups. These include shared experiences, unrelated ideas, general thoughts on romance and sexuality, and support and gratitude.
 
 # Elevator Pitch
 
